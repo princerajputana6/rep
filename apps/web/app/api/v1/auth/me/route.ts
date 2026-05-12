@@ -16,7 +16,7 @@ export async function GET() {
     const email = clerkUser?.emailAddresses?.[0]?.emailAddress ?? ''
     const name = `${clerkUser?.firstName ?? ''} ${clerkUser?.lastName ?? ''}`.trim()
 
-    dbUser = await User.create({
+    const newUser = await User.create({
       clerkId,
       email,
       name: name || email,
@@ -24,6 +24,7 @@ export async function GET() {
       agencyId: (clerkUser?.publicMetadata?.agencyId as string) ?? '',
       status: 'active',
     })
+    dbUser = newUser.toObject()
   }
 
   return NextResponse.json({ success: true, data: dbUser })
