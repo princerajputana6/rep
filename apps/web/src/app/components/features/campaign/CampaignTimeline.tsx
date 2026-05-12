@@ -178,7 +178,7 @@ export function CampaignTimeline({ campaign }: CampaignTimelineProps) {
                     {/* Dependencies Arrow */}
                     {phase.dependencies && phase.dependencies.length > 0 && (
                       <div className="absolute -left-2 top-1/2 -translate-y-1/2">
-                        <AlertTriangle className="w-4 h-4 text-amber-500" title="Has dependencies" />
+                        <AlertTriangle className="w-4 h-4 text-amber-500" aria-label="Has dependencies" />
                       </div>
                     )}
                   </div>

@@ -22,7 +22,7 @@ interface EmptyStateProps {
 }
 
 export function EmptyState({ type, searchTerm, onAction, actionLabel }: EmptyStateProps) {
-  const states = {
+  const states: Record<string, { icon: ReactNode; title: string; description: string; showAction: boolean; defaultActionLabel?: string }> = {
     'no-data': {
       icon: <Inbox className="w-16 h-16 text-gray-300" />,
       title: 'No data available',

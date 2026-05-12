@@ -1569,7 +1569,7 @@ export function Assignments() {
     toggleItem,
     clearSelection,
     isSelected,
-  } = useBulkSelection(allAssignments);
+  } = useBulkSelection(allAssignments.map(a => a.id));
 
   const [search,     setSearch]    = useState('');
   const [activeTab,  setActiveTab] = useState<'integrated' | 'campaign'>('integrated');

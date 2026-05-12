@@ -340,7 +340,7 @@ export function WaffleMenu({ currentPage, onPageChange }: WaffleMenuProps) {
           <div className="flex items-center justify-between text-xs text-gray-600">
             <span>Press <kbd className="px-1.5 py-0.5 bg-white border border-gray-300 rounded text-xs font-mono">⌘K</kbd> for quick navigation</span>
             <button
-              onClick={() => onPageChange('settings')}
+              onClick={() => onPageChange?.('settings')}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
               Customize Apps

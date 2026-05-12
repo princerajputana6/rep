@@ -201,6 +201,10 @@ interface CampaignTemplate {
   phases: Phase[];
   icon: string;
   color: string;
+  createdBy: string;
+  createdDate: string;
+  isPublic: boolean;
+  usageCount: number;
 }
 
 interface Phase {
@@ -374,6 +378,10 @@ const campaignTemplates: CampaignTemplate[] = [
         deliverables: ['Analytics report', 'Recommendations'],
       },
     ],
+    createdBy: 'System',
+    createdDate: '2024-01-01',
+    isPublic: true,
+    usageCount: 45,
   },
   {
     id: '2',
@@ -424,6 +432,10 @@ const campaignTemplates: CampaignTemplate[] = [
         deliverables: ['Analytics report', 'Recommendations'],
       },
     ],
+    createdBy: 'System',
+    createdDate: '2024-01-01',
+    isPublic: true,
+    usageCount: 32,
   },
   {
     id: '3',
@@ -474,6 +486,10 @@ const campaignTemplates: CampaignTemplate[] = [
         deliverables: ['Analytics report'],
       },
     ],
+    createdBy: 'System',
+    createdDate: '2024-01-01',
+    isPublic: true,
+    usageCount: 28,
   },
 ];
 
@@ -2256,7 +2272,7 @@ export function CampaignMapper() {
                 <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                   <div className="text-xs font-semibold text-green-900 mb-2">Mapped Project:</div>
                   <div className="text-sm text-green-800">
-                    {mockWorkfrontProjects.find(p => p.id === selectedPPMProject)?.name}
+                    {mockPPMProjects.find(p => p.id === selectedPPMProject)?.name}
                   </div>
                   <div className="text-xs text-green-700 mt-1">
                     Source ID: {selectedPPMProject} • {mappedTasks.length} tasks mapped
@@ -3032,7 +3048,7 @@ export function CampaignMapper() {
         onOpenChange={setShowTemplateManager}
         templates={campaignTemplates}
         onUseTemplate={(template) => {
-          setSelectedTemplate(template.id);
+          setSelectedTemplate(template as any);
           setShowCreateDialog(true);
         }}
         onEditTemplate={(template) => {

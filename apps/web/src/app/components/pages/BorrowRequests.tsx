@@ -167,13 +167,13 @@ export function BorrowRequests() {
 
   useEffect(() => {
     borrowRequestsApi.list().then(result => {
-      const mapped: BorrowRequest[] = result.data.map(r => ({
+      const mapped: BorrowRequest[] = result.data.map((r: any) => ({
         id: r.id,
-        requestedBy: r.createdBy,
+        requestedBy: r.createdBy?.name ?? r.createdBy ?? 'Unknown',
         agency: r.requestingTeam,
         project: r.projectName ?? '',
         role: r.resourceName,
-        skills: (() => { try { return JSON.parse(r.skillsNeeded); } catch { return r.skillsNeeded ? r.skillsNeeded.split(',').map(s => s.trim()) : []; } })(),
+        skills: (() => { try { return JSON.parse(r.skillsNeeded); } catch { return r.skillsNeeded ? r.skillsNeeded.split(',').map((s: string) => s.trim()) : []; } })(),
         duration: `${r.durationWeeks} weeks`,
         hours: Math.round((r.allocationPct / 100) * r.durationWeeks * 40),
         partnerAgency: r.owningTeam,
@@ -228,7 +228,7 @@ export function BorrowRequests() {
   });
 
   function advanceStage(id: string) {
-    borrowRequestsApi.advance(id).then(updated => {
+    borrowRequestsApi.approve(id).then((updated: any) => {
       setRequests((prev) =>
         prev.map((r) => {
           if (r.id !== id) return r;
@@ -251,15 +251,15 @@ export function BorrowRequests() {
           return { ...r, status: 'approved' as const };
         })
       );
-    }).catch(err => {
+    }).catch((err: any) => {
       toast.error(err.message);
     });
   }
 
   function rejectRequest(id: string) {
-    borrowRequestsApi.reject(id).then(() => {
+    borrowRequestsApi.reject(id, 'Rejected').then(() => {
       setRequests((prev) =>
-        prev.map((r) => {
+        prev.map((r: BorrowRequest) => {
           if (r.id !== id) return r;
           toast.success(`Request ${r.id} rejected`);
           return { ...r, status: 'rejected' as const };
@@ -296,7 +296,7 @@ export function BorrowRequests() {
     }).then(created => {
       const newReq: BorrowRequest = {
         id: created.id,
-        requestedBy: created.createdBy,
+        requestedBy: (created as any).createdBy?.name ?? (created as any).createdBy ?? 'Unknown',
         agency: created.requestingTeam,
         project: created.projectName ?? newProject,
         role: created.resourceName,

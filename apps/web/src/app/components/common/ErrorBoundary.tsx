@@ -77,7 +77,7 @@ function DefaultErrorFallback({ error, resetErrorBoundary }: ErrorBoundaryFallba
           </div>
 
           {/* Stack Trace (Development Only) */}
-          {import.meta.env.DEV && error.stack && (
+          {process.env.NODE_ENV === 'development' && error.stack && (
             <details className="text-xs">
               <summary className="cursor-pointer font-semibold text-gray-700 mb-2">
                 Stack Trace (Development)

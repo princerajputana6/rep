@@ -1,7 +1,7 @@
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
-import { User } from '@/lib/models/User'
+import { User, IUser } from '@/lib/models/User'
 
 export async function GET() {
   const { userId: clerkId } = await auth()
@@ -24,7 +24,7 @@ export async function GET() {
       agencyId: (clerkUser?.publicMetadata?.agencyId as string) ?? '',
       status: 'active',
     })
-    dbUser = newUser.toObject()
+    dbUser = newUser.toObject() as any
   }
 
   return NextResponse.json({ success: true, data: dbUser })
