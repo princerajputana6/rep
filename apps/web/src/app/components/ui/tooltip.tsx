@@ -7,6 +7,13 @@ import * as React from 'react';
 import * as TooltipPrimitive from '@radix-ui/react-tooltip';
 import { Info } from 'lucide-react';
 
+// Export individual components for direct use
+export const TooltipProvider = TooltipPrimitive.Provider;
+export const TooltipRoot = TooltipPrimitive.Root;
+export const TooltipTrigger = TooltipPrimitive.Trigger;
+export const TooltipContent = TooltipPrimitive.Content;
+export const TooltipPortal = TooltipPrimitive.Portal;
+
 interface TooltipProps {
   children: React.ReactNode;
   content: string | React.ReactNode;
