@@ -539,7 +539,7 @@ function TaskDetailDialog({
 // ─── Campaign Group (campaign tab) ────────────────────────────────────────────
 
 function CampaignGroup({
-  campaign, tasks, onViewTask, onAddTask, onPageChange,
+  campaign, tasks, onViewTask, onAddTask, onPageChange, isSelected, toggleItem,
 }: {
   campaign: Campaign;
   tasks: CampaignTask[];
@@ -658,6 +658,8 @@ export function Tasks({ onPageChange = () => {} }: TasksProps) {
   const [createOpen,    setCreateOpen]    = useState(false);
   const [createForCampaign, setCreateForCampaign] = useState<string | undefined>();
   const [justCreated,   setJustCreated]   = useState<{ name: string; type: 'integrated' | 'campaign' } | null>(null);
+  const [detailTask,    setDetailTask]    = useState<IntegratedTask | CampaignTask | null>(null);
+  const [detailType,    setDetailType]    = useState<'integrated' | 'campaign' | null>(null);
 
   const allTasks = useMemo(() => [
     ...intTasks.map(t => ({ ...t, taskType: 'integrated' })),
@@ -671,8 +673,8 @@ export function Tasks({ onPageChange = () => {} }: TasksProps) {
     toggleAll,
     clearSelection,
     isSelected,
-    allSelected,
-  } = useBulkSelection(allTasks);
+    isAllSelected,
+  } = useBulkSelection(allTasks.map(t => t.id));
 
   function openCreateFor(campaignId?: string) {
     setCreateForCampaign(campaignId);
@@ -843,7 +845,7 @@ export function Tasks({ onPageChange = () => {} }: TasksProps) {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-[40px]">
-                        <BulkSelectCheckbox checked={allSelected} onCheckedChange={toggleAll} />
+                        <BulkSelectCheckbox checked={isAllSelected} onCheckedChange={() => toggleAll(filteredInt.map(t => t.id))} />
                       </TableHead>
                       <TableHead>Source</TableHead>
                       <TableHead>Task</TableHead>
@@ -934,12 +936,14 @@ export function Tasks({ onPageChange = () => {} }: TasksProps) {
         onCreateCampaign={handleCreateCampaign}
       />
 
-      <TaskDetailDialog
-        task={detailTask}
-        type={detailType}
-        onClose={() => setDetailTask(null)}
-        onPageChange={onPageChange}
-      />
+      {detailTask && detailType && (
+        <TaskDetailDialog
+          task={detailTask}
+          type={detailType}
+          onClose={() => setDetailTask(null)}
+          onPageChange={onPageChange}
+        />
+      )}
 
       <BulkOperationsBar
         selectedCount={selectedCount}
