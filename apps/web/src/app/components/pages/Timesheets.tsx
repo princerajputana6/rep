@@ -162,7 +162,7 @@ function WeekNavigator({ weekKey, onWeekChange, isLocked, weekStatus, onSubmit }
         <ChevronLeft className="w-4 h-4" />
       </Button>
       <div className="flex items-center gap-3">
-        {isLocked && <Lock className="w-4 h-4 text-blue-500" title="Period locked" />}
+        {isLocked && <Lock className="w-4 h-4 text-blue-500" aria-label="Period locked" />}
         <div className="text-center">
           <p className="font-semibold text-sm text-gray-900">{formatWeekLabel(weekKey)}</p>
           <p className="text-xs text-gray-500">{weekKey}</p>
