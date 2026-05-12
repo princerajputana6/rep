@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "REP Platform - Resource & Engagement Platform (Monorepo)",
   "private": true,
+  "packageManager": "npm@10.9.2",
   "workspaces": [
     "apps/*"
   ],
