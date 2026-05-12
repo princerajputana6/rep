@@ -93,7 +93,7 @@ export const workfrontConnectorService = {
   },
 
   async testConnection(id: string): Promise<TestConnectionResult> {
-    return api.post<TestConnectionResult>(`/integrations/workfront/connectors/${id}/test`)
+    return api.post<TestConnectionResult>(`/integrations/workfront/connectors/${id}/test`, {})
   },
 
   async triggerSync(id: string, mode: 'FULL' | 'INCREMENTAL' = 'INCREMENTAL'): Promise<WorkfrontSyncJob> {
