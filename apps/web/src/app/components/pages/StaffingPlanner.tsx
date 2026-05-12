@@ -188,7 +188,7 @@ export function StaffingPlanner() {
           p.periodType === 'QUARTERLY' ? 'quarterly' : 'annual';
         const cols = period === 'monthly' ? ['W1', 'W2', 'W3', 'W4'] :
                      period === 'quarterly' ? ['M1', 'M2', 'M3'] : ['Q1', 'Q2', 'Q3', 'Q4'];
-        const rows: StaffingRow[] = p.rows.map(r => {
+        const rows: StaffingRow[] = ((p as any).rows ?? []).map((r: any) => {
           const allocs = [r.col1Hours, r.col2Hours, r.col3Hours, r.col4Hours]
             .slice(0, cols.length)
             .map((hours, i) => ({ label: cols[i], hours }));
@@ -202,7 +202,7 @@ export function StaffingPlanner() {
           year: p.year,
           quarter: (p.quarter ?? undefined) as 1 | 2 | 3 | 4 | undefined,
           month: p.month ?? undefined,
-          projects: (() => { try { return JSON.parse(p.projectIds); } catch { return p.projectIds ? p.projectIds.split(',') : []; } })(),
+          projects: Array.isArray((p as any).projectIds) ? (p as any).projectIds : [],
           rows,
           createdAt: p.createdAt.slice(0, 10),
           status: (p.status as StaffingPlan['status']) ?? 'draft',
@@ -259,7 +259,7 @@ export function StaffingPlanner() {
       year,
       quarter: planPeriodType === 'quarterly' ? q : undefined,
       month: planPeriodType === 'monthly' ? m : undefined,
-      projectIds: JSON.stringify(Array.from(selectedProjects)),
+      projectIds: Array.from(selectedProjects),
       status: 'draft',
       rows: rows.map(r => ({
         resourceName: r.resourceName,
@@ -269,7 +269,7 @@ export function StaffingPlanner() {
         col3Hours: r.allocations[2]?.hours ?? 0,
         col4Hours: r.allocations[3]?.hours ?? 0,
       })),
-    }).then(created => {
+    } as any).then(created => {
       const period = planPeriodType;
       const newPlan: StaffingPlan = {
         id: created.id,
@@ -305,7 +305,7 @@ export function StaffingPlanner() {
         col3Hours: r.allocations[2]?.hours ?? 0,
         col4Hours: cols.length >= 4 ? (r.allocations[3]?.hours ?? 0) : 0,
       })),
-    }).then(() => {
+    } as any).then(() => {
       setPlans(prev => prev.map(p => p.id === loadedPlan.id ? loadedPlan : p));
       toast.success(`Plan "${loadedPlan.name}" saved`);
     }).catch(err => {
