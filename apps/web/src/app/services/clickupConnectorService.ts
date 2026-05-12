@@ -97,7 +97,7 @@ export const clickupConnectorService = {
   },
 
   async testConnection(id: string): Promise<TestConnectionResult> {
-    return api.post<TestConnectionResult>(`/integrations/clickup/connectors/${id}/test`)
+    return api.post<TestConnectionResult>(`/integrations/clickup/connectors/${id}/test`, {})
   },
 
   async triggerSync(id: string, mode: 'FULL' | 'INCREMENTAL' = 'INCREMENTAL'): Promise<ClickUpSyncJob> {
