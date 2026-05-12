@@ -8,11 +8,11 @@
     "apps/*"
   ],
   "scripts": {
-    "dev": "npm run dev --workspace=apps/web",
-    "build": "npm run build --workspace=apps/web",
-    "start": "npm run start --workspace=apps/web",
-    "lint": "npm run lint --workspace=apps/web",
-    "type-check": "npm run type-check --workspace=apps/web"
+    "dev": "npm run dev -w @rep/web",
+    "build": "npm run build -w @rep/web",
+    "start": "npm run start -w @rep/web",
+    "lint": "npm run lint -w @rep/web",
+    "type-check": "npm run type-check -w @rep/web"
   },
   "keywords": ["resource-management", "platform", "b2b", "engagement"],
   "author": "Engineering Team",
