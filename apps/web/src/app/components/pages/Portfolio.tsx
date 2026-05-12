@@ -106,7 +106,7 @@ const DUMMY_PORTFOLIOS: Portfolio[] = [
     programs: [
       { id: 'dp8', name: 'CRM Overhaul', projectCount: 5, budget: 2000000, spent: 1400000, health: 71, status: 'active', shareableHours: 40, unlockableRevenue: 3200 },
       { id: 'dp9', name: 'Sales Enablement', projectCount: 3, budget: 1800000, spent: 900000, health: 85, status: 'active', shareableHours: 30, unlockableRevenue: 2800 },
-      { id: 'dp10', name: 'Partner Ecosystem', projectCount: 4, budget: 1800000, spent: 800000, health: 62, status: 'on-hold', shareableHours: 25, unlockableRevenue: 3800 },
+      { id: 'dp10', name: 'Partner Ecosystem', projectCount: 4, budget: 1800000, spent: 800000, health: 62, status: 'planning', shareableHours: 25, unlockableRevenue: 3800 },
     ],
   },
   {
@@ -305,6 +305,8 @@ function CreatePortfolioDialog({ open, onClose, onCreated }: {
         totalSpent: created.spent ?? 0,
         startDate: created.startDate ?? form.startDate,
         endDate: created.endDate ?? form.endDate,
+        shareableHours: 0,
+        unlockableRevenue: 0,
         programs: [],
       };
       onCreated(newPortfolio);
@@ -386,7 +388,7 @@ export function Portfolio() {
           endDate: p.endDate ?? '',
           shareableHours: Math.floor(Math.random() * 500),
           unlockableRevenue: Math.floor(Math.random() * 50000),
-          programs: (p.programs ?? []).map(pg => ({
+          programs: ((p as any).programs ?? []).map((pg: any) => ({
             id: pg.id,
             name: pg.name,
             projectCount: 0,
