@@ -383,9 +383,9 @@ function BoardTab({ projects, setProjects, onOpenProject }: { projects: Project[
     toggleAll,
     clearSelection,
     isSelected,
-    allSelected,
-    someSelected,
-  } = useBulkSelection(projects);
+    isAllSelected,
+    isSomeSelected,
+  } = useBulkSelection(projects.map(p => p.id));
 
   const filtered = useMemo(() => projects.filter(p => {
     if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !p.client.toLowerCase().includes(search.toLowerCase())) return false;
@@ -497,7 +497,7 @@ function BoardTab({ projects, setProjects, onOpenProject }: { projects: Project[
           <Table>
             <TableHeader><TableRow>
               <TableHead className="w-[40px]">
-                <BulkSelectCheckbox checked={allSelected} onCheckedChange={toggleAll} />
+                <BulkSelectCheckbox checked={isAllSelected} onCheckedChange={() => toggleAll(filtered.map(p => p.id))} />
               </TableHead>
               <TableHead>Project</TableHead><TableHead>Client</TableHead><TableHead>Archetype</TableHead>
               <TableHead>Status</TableHead><TableHead>Pulse</TableHead><TableHead>Budget Burn</TableHead>
