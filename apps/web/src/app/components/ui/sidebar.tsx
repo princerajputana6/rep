@@ -20,6 +20,7 @@ import {
 import { Skeleton } from "./skeleton";
 import {
   Tooltip,
+  TooltipRoot,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
@@ -533,7 +534,7 @@ function SidebarMenuButton({
   }
 
   return (
-    <Tooltip>
+    <TooltipRoot>
       <TooltipTrigger asChild>{button}</TooltipTrigger>
       <TooltipContent
         side="right"
@@ -541,7 +542,7 @@ function SidebarMenuButton({
         hidden={state !== "collapsed" || isMobile}
         {...tooltip}
       />
-    </Tooltip>
+    </TooltipRoot>
   );
 }
 
