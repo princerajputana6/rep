@@ -1,7 +1,24 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node node_modules/vite/bin/vite.js:*)"
+      "Bash(node node_modules/vite/bin/vite.js:*)",
+      "Bash(ls apps/web/.env*)",
+      "Bash(grep -rl \"encrypt\" apps/web/src/lib)",
+      "Bash(node -e \"console.log\\(process.version\\)\")",
+      "Bash(npx tsc *)",
+      "Bash(curl -s -i -X GET http://localhost:3000/api/v1/integrations/workfront/connectors)",
+      "Bash(curl -s -i -X POST http://localhost:3000/api/v1/integrations/workfront/connectors -H 'Content-Type: application/json' -d '{\"name\":\"Workfront Sandbox\",\"baseUrl\":\"https://roar.sb02.workfront.com\",\"domain\":\"roar\",\"apiVersion\":\"v21.0\",\"authType\":\"API_KEY\",\"syncFrequencyMinutes\":15,\"apiKey\":\"x\"}')",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3001/api/v1/integrations/workfront/connectors)",
+      "Bash(curl -s http://localhost:3001/api/v1/integrations/workfront/connectors)",
+      "Bash(curl -s -X POST http://localhost:3001/api/v1/integrations/workfront/connectors -H 'Content-Type: application/json' -d '{\"name\":\"t\",\"baseUrl\":\"https://x.com\",\"domain\":\"x\",\"apiVersion\":\"v21.0\",\"authType\":\"API_KEY\",\"apiKey\":\"x\"}')",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3001/api/v1/integrations)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3001/api/v1/projects)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3001/api/v1/integrations/workfront/connectors/abc/test -X POST)",
+      "Bash(kill 7432 7433)",
+      "Bash(lsof -iTCP:3001 -sTCP:LISTEN -n -P)",
+      "Bash(grep -qE \"Ready|started server|Local:\" /tmp/rep-dev.log)",
+      "Read(//private/tmp/**)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -X POST http://localhost:3001/api/v1/integrations/workfront/connectors -H 'Content-Type: application/json' -d '{}')"
     ]
   }
 }

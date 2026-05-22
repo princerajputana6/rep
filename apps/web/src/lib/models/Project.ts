@@ -16,6 +16,8 @@ export interface IProject extends Document {
   budgetBurnPct?: number
   riskLevel?: string
   ownerId?: mongoose.Types.ObjectId
+  externalSource?: string
+  externalId?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -37,12 +39,15 @@ const ProjectSchema = new Schema<IProject>(
     budgetBurnPct: { type: Number, default: 0 },
     riskLevel: { type: String, default: 'low' },
     ownerId: { type: Schema.Types.ObjectId, ref: 'User' },
+    externalSource: { type: String },
+    externalId: { type: String },
   },
   { timestamps: true }
 )
 
 ProjectSchema.index({ agencyId: 1 })
 ProjectSchema.index({ status: 1 })
+ProjectSchema.index({ externalSource: 1, externalId: 1 })
 
 export const Project: Model<IProject> =
   mongoose.models.Project ?? mongoose.model<IProject>('Project', ProjectSchema)

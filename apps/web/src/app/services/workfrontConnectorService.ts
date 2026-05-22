@@ -14,6 +14,8 @@ export interface WorkfrontConnector {
   lastSyncAt: string | null
   lastSyncError: string | null
   syncFrequencyMinutes: number | null
+  lastSyncProjectCount: number
+  lastSyncResourceCount: number
   createdAt: string
   updatedAt: string
   createdBy: string

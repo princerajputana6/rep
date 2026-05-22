@@ -116,6 +116,8 @@ function mapWfConnector(c: WorkfrontConnector | null): Integration {
     status: c.status === 'ACTIVE' ? 'connected' : 'disconnected',
     lastSync: c.lastSyncAt ? new Date(c.lastSyncAt).toLocaleString() : undefined,
     frequency: c.syncFrequencyMinutes ? `Every ${c.syncFrequencyMinutes} minutes` : undefined,
+    resources: c.lastSyncResourceCount,
+    projects: c.lastSyncProjectCount,
     color: 'bg-purple-500',
   };
 }
@@ -273,10 +275,20 @@ export function Integrations() {
             await workfrontConnectorService.updateObjectConfig(saved.id, obj.code, { enabled: shouldBeEnabled }).catch(() => {});
           }
         }
+        // Pull data from Workfront so it flows into Projects / Resources
+        try {
+          const job = await workfrontConnectorService.triggerSync(saved.id, 'FULL');
+          if (job.status === 'FAILED') {
+            toast.error(`Saved, but sync failed: ${job.errorMessage ?? 'unknown error'}`);
+          } else {
+            toast.success(`Workfront synced — ${job.totalRecords} records pulled.`);
+          }
+        } catch (syncErr: any) {
+          toast.error(`Saved, but sync failed: ${syncErr?.message ?? 'unknown error'}`);
+        }
         // Reload
         const fresh = await workfrontConnectorService.listConnectors();
         setWfConnector(fresh[0] ?? null);
-        toast.success('Workfront configuration saved.');
         setShowConfigDialog(false);
       } catch (err: any) {
         toast.error(err?.message ?? 'Failed to save Workfront configuration.');
