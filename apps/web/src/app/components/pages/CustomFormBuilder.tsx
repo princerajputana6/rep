@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -72,20 +73,26 @@ const fieldTypes = [
 ];
 
 export function CustomFormBuilder() {
-  const [forms, setForms] = useState<CustomForm[]>([
-    {
-      id: '1',
-      name: 'Resource Intake Form',
-      description: 'Capture new resource information for onboarding',
-      fields: [
-        { id: 'f1', type: 'text', label: 'Full Name', required: true },
-        { id: 'f2', type: 'email', label: 'Email Address', required: true },
-        { id: 'f3', type: 'select', label: 'Role', required: true, options: ['Developer', 'Designer', 'Manager'] },
-      ],
-      createdAt: '2025-02-10',
-      usageCount: 45,
-    },
-  ]);
+  const [forms, setForms] = useState<CustomForm[]>([]);
+
+  useEffect(() => {
+    api.get<Record<string, unknown>[]>('/custom-forms')
+      .then((rows) => setForms((Array.isArray(rows) ? rows : []).map((r): CustomForm => ({
+        id: String(r._id ?? ''),
+        name: String(r.name ?? '—'),
+        description: String(r.description ?? ''),
+        fields: Array.isArray(r.fields) ? (r.fields as Record<string, unknown>[]).map((f, i): FormField => ({
+          id: String(f.key ?? `f${i}`),
+          type: (f.type as FormField['type']) ?? 'text',
+          label: String(f.label ?? ''),
+          required: Boolean(f.required),
+          options: Array.isArray(f.options) ? (f.options as string[]) : undefined,
+        })) : [],
+        createdAt: r.createdAt ? String(r.createdAt).slice(0, 10) : '',
+        usageCount: 0,
+      }))))
+      .catch(() => {/* keep empty */})
+  }, []);
 
   const [showFormBuilder, setShowFormBuilder] = useState(false);
   const [showPreview, setShowPreview] = useState(false);

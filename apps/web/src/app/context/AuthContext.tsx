@@ -54,6 +54,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!clerkUser) setDbUser(null)
   }, [isLoaded, clerkUser])
 
+  // Mirror the DB user to localStorage so non-context consumers (like the
+  // Sidebar's role-gated section) can read role synchronously.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (dbUser) localStorage.setItem('rep_user', JSON.stringify(dbUser))
+    else localStorage.removeItem('rep_user')
+  }, [dbUser])
+
   const clerkFallbackUser: AuthUser | null = clerkUser
     ? {
         id: clerkUser.id,

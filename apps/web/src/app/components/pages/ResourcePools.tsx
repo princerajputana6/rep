@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
@@ -87,99 +88,11 @@ function getResourceById(id: string) {
   return availableResources.find((resource) => resource.id === id);
 }
 
-const availableResources: Resource[] = [
-  {
-    id: 'r1',
-    name: 'Sarah Johnson',
-    agency: 'Acme Digital',
-    jobRole: 'Senior Developer',
-    skills: ['React', 'Node.js', 'TypeScript'],
-    utilization: 85,
-    availability: 15,
-    costRate: 150,
-    type: 'internal',
-    currentProject: 'Project Alpha',
-    email: 'sarah.j@acme.com'
-  },
-  {
-    id: 'r2',
-    name: 'Michael Chen',
-    agency: 'CreativeCo',
-    jobRole: 'UX Designer',
-    skills: ['Figma', 'User Research', 'Prototyping'],
-    utilization: 92,
-    availability: 8,
-    costRate: 100,
-    type: 'borrowed',
-    currentProject: 'Project Beta',
-    email: 'mchen@creativeco.com'
-  },
-  {
-    id: 'r3',
-    name: 'Emma Davis',
-    agency: 'TechVentures',
-    jobRole: 'Product Manager',
-    skills: ['Product Strategy', 'Agile'],
-    utilization: 78,
-    availability: 22,
-    costRate: 140,
-    type: 'internal',
-    email: 'edavis@techventures.com'
-  },
-  {
-    id: 'r4',
-    name: 'James Wilson',
-    agency: 'Digital Wave',
-    jobRole: 'Data Analyst',
-    skills: ['SQL', 'Python', 'Tableau'],
-    utilization: 45,
-    availability: 55,
-    costRate: 85,
-    type: 'lent',
-    currentProject: 'Analytics Hub',
-    email: 'jwilson@digitalwave.com'
-  },
-  {
-    id: 'r5',
-    name: 'Lisa Anderson',
-    agency: 'Acme Digital',
-    jobRole: 'Frontend Developer',
-    skills: ['Vue.js', 'CSS', 'JavaScript'],
-    utilization: 65,
-    availability: 35,
-    costRate: 120,
-    type: 'internal',
-    email: 'landerson@acme.com'
-  },
-  {
-    id: 'r6',
-    name: 'David Brown',
-    agency: 'CreativeCo',
-    jobRole: 'Backend Developer',
-    skills: ['Java', 'Spring', 'MySQL'],
-    utilization: 70,
-    availability: 30,
-    costRate: 130,
-    type: 'internal',
-    email: 'dbrown@creativeco.com'
-  },
-];
+const availableResources: Resource[] = [];
 
-const availableManagers: Manager[] = [
-  { id: 'm1', name: 'John Smith', email: 'jsmith@acme.com', agency: 'Acme Digital' },
-  { id: 'm2', name: 'Emily Rodriguez', email: 'erodriguez@creativeco.com', agency: 'CreativeCo' },
-  { id: 'm3', name: 'Robert Taylor', email: 'rtaylor@techventures.com', agency: 'TechVentures' },
-  { id: 'm4', name: 'Jennifer Lee', email: 'jlee@digitalwave.com', agency: 'Digital Wave' },
-];
+const availableManagers: Manager[] = [];
 
-const availableAgencies = [
-  'Acme Digital',
-  'CreativeCo',
-  'TechVentures',
-  'Digital Wave',
-  'Innovation Labs',
-  'Design Studio',
-];
+const availableAgencies: string[] = [];
 
 export function ResourcePools() {
   const { selectedAgency, agencies: allAgencies } = useAgencyContext();
@@ -192,30 +105,22 @@ export function ResourcePools() {
   // Pool management state
   const [showCreatePool, setShowCreatePool] = useState(false);
   const [editingPool, setEditingPool] = useState<ResourcePool | null>(null);
-  const [pools, setPools] = useState<ResourcePool[]>([
-    {
-      id: 'p1',
-      name: 'Frontend Development Team',
-      description: 'Specialized frontend developers with React and Vue expertise',
-      poolManager: 'John Smith',
-      poolManagerId: 'm1',
-      resources: ['r1', 'r5'],
-      assignedAgencies: ['Acme Digital', 'CreativeCo'],
-      createdDate: '2025-01-15',
-      status: 'active',
-    },
-    {
-      id: 'p2',
-      name: 'Data Analytics Pool',
-      description: 'Data analysts and BI specialists',
-      poolManager: 'Jennifer Lee',
-      poolManagerId: 'm4',
-      resources: ['r4'],
-      assignedAgencies: ['Digital Wave', 'TechVentures'],
-      createdDate: '2025-01-20',
-      status: 'active',
-    },
-  ]);
+  const [pools, setPools] = useState<ResourcePool[]>([]);
+  useEffect(() => {
+    api.get<Record<string, unknown>[]>('/resource-pools')
+      .then((rows) => setPools((Array.isArray(rows) ? rows : []).map((r): ResourcePool => ({
+        id: String(r._id ?? ''),
+        name: String(r.name ?? '—'),
+        description: String(r.description ?? ''),
+        poolManager: '',
+        poolManagerId: String(r.managerId ?? ''),
+        resources: Array.isArray(r.memberIds) ? (r.memberIds as string[]) : [],
+        assignedAgencies: Array.isArray(r.sharedWithAgencyIds) ? (r.sharedWithAgencyIds as string[]) : [],
+        createdDate: r.createdAt ? String(r.createdAt).slice(0, 10) : '',
+        status: r.active === false ? 'inactive' : 'active',
+      }))))
+      .catch(() => {/* keep empty */})
+  }, []);
 
   // Form state
   const [poolName, setPoolName] = useState('');

@@ -21,14 +21,7 @@ import { toast } from 'sonner';
 
 // ─── Mock Data ────────────────────────────────────────────────────────────────
 
-const PL_DATA = [
-  { month: 'Aug', revenue: 890000, cogs: 510000, grossProfit: 380000, opex: 180000, ebitda: 200000, interest: 12000, net: 188000 },
-  { month: 'Sep', revenue: 945000, cogs: 535000, grossProfit: 410000, opex: 185000, ebitda: 225000, interest: 12000, net: 213000 },
-  { month: 'Oct', revenue: 1020000, cogs: 572000, grossProfit: 448000, opex: 190000, ebitda: 258000, interest: 12000, net: 246000 },
-  { month: 'Nov', revenue: 975000, cogs: 548000, grossProfit: 427000, opex: 188000, ebitda: 239000, interest: 12000, net: 227000 },
-  { month: 'Dec', revenue: 890000, cogs: 498000, grossProfit: 392000, opex: 178000, ebitda: 214000, interest: 12000, net: 202000 },
-  { month: 'Jan', revenue: 1085000, cogs: 598000, grossProfit: 487000, opex: 195000, ebitda: 292000, interest: 12000, net: 280000 },
-];
+const PL_DATA: { month: string; revenue: number; cogs: number; grossProfit: number; opex: number; ebitda: number; interest: number; net: number }[] = [];
 
 const PL_MARGIN = PL_DATA.map(d => ({
   month: d.month,
@@ -37,15 +30,7 @@ const PL_MARGIN = PL_DATA.map(d => ({
   netPct: parseFloat(((d.net / d.revenue) * 100).toFixed(1)),
 }));
 
-const CASHFLOW_DATA = [
-  { month: 'Oct', inflow: 980000, outflow: 762000, net: 218000, projected: false },
-  { month: 'Nov', inflow: 935000, outflow: 736000, net: 199000, projected: false },
-  { month: 'Dec', inflow: 855000, outflow: 710000, net: 145000, projected: false },
-  { month: 'Jan', inflow: 1040000, outflow: 810000, net: 230000, projected: false },
-  { month: 'Feb', inflow: 1060000, outflow: 820000, net: 240000, projected: true },
-  { month: 'Mar', inflow: 1090000, outflow: 830000, net: 260000, projected: true },
-  { month: 'Apr', inflow: 1120000, outflow: 845000, net: 275000, projected: true },
-];
+const CASHFLOW_DATA: { month: string; inflow: number; outflow: number; net: number; projected: boolean }[] = [];
 
 interface ProjectBurn {
   id: string; name: string; client: string;
@@ -55,33 +40,16 @@ interface ProjectBurn {
   variance: number;
 }
 
-const PROJECTS_BURN: ProjectBurn[] = [
-  { id:'p1', name:'Digital Transformation', client:'Acme Corp', budget:240000, spent:218000, plannedPct:88, billValue:285000, costValue:218000, daysTotal:180, daysElapsed:158, status:'on-track', variance:22000 },
-  { id:'p2', name:'Mobile App Redesign', client:'TechStart Inc', budget:180000, spent:195000, plannedPct:82, billValue:210000, costValue:195000, daysTotal:120, daysElapsed:98, status:'over-budget', variance:-15000 },
-  { id:'p3', name:'Data Analytics Platform', client:'DataViz Co', budget:320000, spent:285000, plannedPct:75, billValue:380000, costValue:285000, daysTotal:200, daysElapsed:150, status:'on-track', variance:35000 },
-  { id:'p4', name:'E-commerce Platform', client:'RetailBrand', budget:400000, spent:412000, plannedPct:95, billValue:450000, costValue:412000, daysTotal:240, daysElapsed:228, status:'over-budget', variance:-12000 },
-  { id:'p5', name:'Brand Awareness H2', client:'GlobalBrand', budget:85000, spent:42000, plannedPct:40, billValue:95000, costValue:42000, daysTotal:180, daysElapsed:72, status:'on-track', variance:43000 },
-  { id:'p6', name:'CRM Integration', client:'SalesForce Ltd', budget:150000, spent:138000, plannedPct:92, billValue:165000, costValue:138000, daysTotal:90, daysElapsed:82, status:'warning', variance:12000 },
-];
+const PROJECTS_BURN: ProjectBurn[] = [];
 
 interface AgencyLedger {
   agency: string; borrowCost: number; lendRevenue: number; netPosition: number;
   aging30: number; aging60: number; aging90: number; aging90plus: number;
   lastSettlement: string; status: 'cleared' | 'pending' | 'overdue';
 }
-const AGENCY_LEDGER: AgencyLedger[] = [
-  { agency:'Acme Digital', borrowCost:145000, lendRevenue:98000, netPosition:-47000, aging30:0, aging60:20000, aging90:18000, aging90plus:9000, lastSettlement:'2026-01-15', status:'overdue' },
-  { agency:'CreativeCo', borrowCost:67000, lendRevenue:122000, netPosition:55000, aging30:30000, aging60:25000, aging90:0, aging90plus:0, lastSettlement:'2026-02-01', status:'pending' },
-  { agency:'TechVentures', borrowCost:98000, lendRevenue:156000, netPosition:58000, aging30:58000, aging60:0, aging90:0, aging90plus:0, lastSettlement:'2026-02-10', status:'pending' },
-  { agency:'Digital Wave', borrowCost:52000, lendRevenue:78000, netPosition:26000, aging30:26000, aging60:0, aging90:0, aging90plus:0, lastSettlement:'2026-02-12', status:'cleared' },
-];
+const AGENCY_LEDGER: AgencyLedger[] = [];
 
-const LEAKAGE_ITEMS = [
-  { type:'Unbilled Hours', amount:24500, projects:3, recoverable:true, priority:'high' as const },
-  { type:'Rate Discount Creep', amount:18000, projects:5, recoverable:false, priority:'medium' as const },
-  { type:'Scope Overrun (Untracked)', amount:31200, projects:2, recoverable:true, priority:'critical' as const },
-  { type:'Unused Retainer Capacity', amount:12000, projects:2, recoverable:false, priority:'low' as const },
-];
+const LEAKAGE_ITEMS: { type: string; amount: number; projects: number; recoverable: boolean; priority: 'low' | 'medium' | 'high' | 'critical' }[] = [];
 
 const LEAKAGE_TOTAL = LEAKAGE_ITEMS.reduce((s, l) => s + l.amount, 0);
 const LEAKAGE_RECOVERABLE = LEAKAGE_ITEMS.filter(l => l.recoverable).reduce((s, l) => s + l.amount, 0);
@@ -91,49 +59,21 @@ const LEAKAGE_RECOVERABLE = LEAKAGE_ITEMS.filter(l => l.recoverable).reduce((s, 
 interface PortfolioDef { id: string; name: string; programIds: string[] }
 interface ProgramDef  { id: string; name: string; portfolioId: string; projectIds: string[] }
 
-const FIN_PORTFOLIOS: PortfolioDef[] = [
-  { id: 'pf1', name: 'Digital Transformation',       programIds: ['pg1', 'pg2'] },
-  { id: 'pf2', name: 'Brand & Marketing Excellence', programIds: ['pg3'] },
-  { id: 'pf3', name: 'Revenue Operations',           programIds: ['pg4'] },
-];
+const FIN_PORTFOLIOS: PortfolioDef[] = [];
 
-const FIN_PROGRAMS: ProgramDef[] = [
-  { id: 'pg1', name: 'Data & Analytics',        portfolioId: 'pf1', projectIds: ['p3', 'p4'] },
-  { id: 'pg2', name: 'Customer Experience',     portfolioId: 'pf1', projectIds: ['p2'] },
-  { id: 'pg3', name: 'Campaign Excellence',     portfolioId: 'pf2', projectIds: ['p1', 'p5'] },
-  { id: 'pg4', name: 'CRM & Sales Enablement',  portfolioId: 'pf3', projectIds: ['p6'] },
-];
+const FIN_PROGRAMS: ProgramDef[] = [];
 
 interface TaskBurn {
   id: string; name: string; projectId: string;
   budget: number; spent: number; resourceCount: number; hoursTotal: number; hoursLogged: number;
 }
-const TASK_BURN: TaskBurn[] = [
-  { id: 't1', name: 'UX Research & Audit',       projectId: 'p1', budget: 45000,  spent: 40000,  resourceCount: 2, hoursTotal: 300, hoursLogged: 267 },
-  { id: 't2', name: 'UI Design System',           projectId: 'p1', budget: 80000,  spent: 68000,  resourceCount: 3, hoursTotal: 480, hoursLogged: 413 },
-  { id: 't3', name: 'Frontend Development',       projectId: 'p1', budget: 115000, spent: 110000, resourceCount: 4, hoursTotal: 720, hoursLogged: 695 },
-  { id: 't4', name: 'Requirements Gathering',     projectId: 'p2', budget: 25000,  spent: 25000,  resourceCount: 2, hoursTotal: 160, hoursLogged: 160 },
-  { id: 't5', name: 'App Architecture',           projectId: 'p2', budget: 60000,  spent: 72000,  resourceCount: 2, hoursTotal: 380, hoursLogged: 460 },
-  { id: 't6', name: 'QA & Testing',               projectId: 'p2', budget: 95000,  spent: 98000,  resourceCount: 3, hoursTotal: 600, hoursLogged: 618 },
-  { id: 't7', name: 'Data Pipeline Build',         projectId: 'p3', budget: 120000, spent: 98000,  resourceCount: 3, hoursTotal: 750, hoursLogged: 620 },
-  { id: 't8', name: 'Dashboard Development',       projectId: 'p3', budget: 85000,  spent: 75000,  resourceCount: 2, hoursTotal: 530, hoursLogged: 470 },
-  { id: 't9', name: 'Model Training & Validation', projectId: 'p3', budget: 115000, spent: 112000, resourceCount: 2, hoursTotal: 720, hoursLogged: 700 },
-];
+const TASK_BURN: TaskBurn[] = [];
 
 interface AssignmentBurn {
   id: string; taskId: string; resource: string; role: string;
   hours: number; ratePerHour: number; cost: number; billedHours: number;
 }
-const ASSIGNMENT_BURN: AssignmentBurn[] = [
-  { id: 'a1', taskId: 't1', resource: 'Alex Chen',    role: 'UX Lead',        hours: 120, ratePerHour: 175, cost: 21000, billedHours: 118 },
-  { id: 'a2', taskId: 't1', resource: 'Sara Kim',     role: 'Researcher',     hours: 147, ratePerHour: 130, cost: 19110, billedHours: 149 },
-  { id: 'a3', taskId: 't2', resource: 'Alex Chen',    role: 'Design Lead',    hours: 160, ratePerHour: 175, cost: 28000, billedHours: 140 },
-  { id: 'a4', taskId: 't2', resource: 'Tom Reeves',   role: 'UI Designer',    hours: 180, ratePerHour: 140, cost: 25200, billedHours: 165 },
-  { id: 'a5', taskId: 't2', resource: 'Priya Patel',  role: 'Motion Designer',hours:  73, ratePerHour: 135, cost:  9855, billedHours: 108 },
-  { id: 'a6', taskId: 't3', resource: 'James Wu',     role: 'Tech Lead',      hours: 200, ratePerHour: 195, cost: 39000, billedHours: 196 },
-  { id: 'a7', taskId: 't3', resource: 'Maria Lopez',  role: 'Frontend Dev',   hours: 260, ratePerHour: 155, cost: 40300, billedHours: 255 },
-  { id: 'a8', taskId: 't3', resource: 'Sara Kim',     role: 'Frontend Dev',   hours: 235, ratePerHour: 130, cost: 30550, billedHours: 244 },
-];
+const ASSIGNMENT_BURN: AssignmentBurn[] = [];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

@@ -134,17 +134,7 @@ interface ProjectRow {
   tasks: number; assignments: number; plannedHrs: number;
   billValue: number; costValue: number; startDate: string; endDate: string;
 }
-const PROJECTS_DATA: ProjectRow[] = [
-  { id: 'p1', name: 'Mobile App Redesign', type: 'integrated', client: 'Acme Corp', status: 'active', tasks: 12, assignments: 28, plannedHrs: 640, billValue: 96000, costValue: 64000, startDate: '2026-02-01', endDate: '2026-06-30' },
-  { id: 'p2', name: 'Platform Core', type: 'integrated', client: 'TechStart Inc', status: 'active', tasks: 8, assignments: 15, plannedHrs: 320, billValue: 51200, costValue: 33000, startDate: '2026-03-01', endDate: '2026-07-31' },
-  { id: 'p3', name: 'Data Analytics Platform', type: 'integrated', client: 'DataViz Co', status: 'active', tasks: 6, assignments: 10, plannedHrs: 480, billValue: 74400, costValue: 48000, startDate: '2026-01-15', endDate: '2026-08-15' },
-  { id: 'p4', name: 'Brand Refresh', type: 'integrated', client: 'BrandCo', status: 'on-hold', tasks: 4, assignments: 5, plannedHrs: 160, billValue: 24000, costValue: 16000, startDate: '2026-04-01', endDate: '2026-09-30' },
-  { id: 'p5', name: 'PDF Services', type: 'integrated', client: 'DocuTech', status: 'active', tasks: 5, assignments: 8, plannedHrs: 200, billValue: 32000, costValue: 21000, startDate: '2026-03-15', endDate: '2026-05-31' },
-  { id: 'p6', name: 'CRM Integration', type: 'integrated', client: 'SalesForce Ltd', status: 'completed', tasks: 10, assignments: 20, plannedHrs: 400, billValue: 62000, costValue: 40000, startDate: '2025-10-01', endDate: '2026-02-28' },
-  { id: 'c1', name: 'Summer Launch 2026', type: 'campaign', client: 'Global Brand', status: 'active', tasks: 4, assignments: 8, plannedHrs: 180, billValue: 23400, costValue: 15300, startDate: '2026-04-01', endDate: '2026-06-30' },
-  { id: 'c2', name: 'Performance Max Q2', type: 'campaign', client: 'EcomStore', status: 'active', tasks: 3, assignments: 5, plannedHrs: 120, billValue: 15600, costValue: 10200, startDate: '2026-04-01', endDate: '2026-06-30' },
-  { id: 'c3', name: 'Brand Awareness H2', type: 'campaign', client: 'RetailBrand', status: 'planning', tasks: 6, assignments: 2, plannedHrs: 60, billValue: 7800, costValue: 5100, startDate: '2026-07-01', endDate: '2026-12-31' },
-];
+const PROJECTS_DATA: ProjectRow[] = [];
 
 interface TaskRow {
   id: string; name: string; taskId: string;
@@ -152,19 +142,7 @@ interface TaskRow {
   source: string; status: 'not-started' | 'in-progress' | 'blocked' | 'done';
   dueDate: string; assignments: number; plannedHrs: number; billValue: number;
 }
-const TASKS_DATA: TaskRow[] = [
-  { id: 't1', name: 'Design System Migration', taskId: 'WF-2201', project: 'Mobile App Redesign', projectType: 'integrated', source: 'Workfront', status: 'in-progress', dueDate: '2026-05-15', assignments: 1, plannedHrs: 80, billValue: 11600 },
-  { id: 't2', name: 'Auth Service Refactor', taskId: 'JIRA-884', project: 'Platform Core', projectType: 'integrated', source: 'Jira', status: 'not-started', dueDate: '2026-04-30', assignments: 1, plannedHrs: 40, billValue: 6200 },
-  { id: 't3', name: 'ETL Pipeline Hardening', taskId: 'CU-3301', project: 'Data Analytics Platform', projectType: 'integrated', source: 'ClickUp', status: 'in-progress', dueDate: '2026-05-20', assignments: 1, plannedHrs: 120, billValue: 18600 },
-  { id: 't4', name: 'SEO Audit & Fixes', taskId: 'ASN-512', project: 'Brand Refresh', projectType: 'integrated', source: 'Asana', status: 'not-started', dueDate: '2026-06-10', assignments: 0, plannedHrs: 0, billValue: 0 },
-  { id: 't5', name: 'Back-end Schema Mapping', taskId: 'MON-1101', project: 'PDF Services', projectType: 'integrated', source: 'Monday.com', status: 'blocked', dueDate: '2026-04-25', assignments: 2, plannedHrs: 100, billValue: 15500 },
-  { id: 't6', name: 'API Gateway Refactor', taskId: 'JIRA-901', project: 'Platform Core', projectType: 'integrated', source: 'Jira', status: 'in-progress', dueDate: '2026-05-30', assignments: 1, plannedHrs: 60, billValue: 9300 },
-  { id: 't7', name: 'Dashboard v2 UI', taskId: 'WF-2210', project: 'Mobile App Redesign', projectType: 'integrated', source: 'Workfront', status: 'not-started', dueDate: '2026-06-15', assignments: 0, plannedHrs: 0, billValue: 0 },
-  { id: 't8', name: 'Q2 Creative Assets Production', taskId: 'CAM-301', project: 'Summer Launch 2026', projectType: 'campaign', source: 'Campaign', status: 'in-progress', dueDate: '2026-05-01', assignments: 2, plannedHrs: 70, billValue: 9100 },
-  { id: 't9', name: 'Social Media Calendar Setup', taskId: 'CAM-302', project: 'Summer Launch 2026', projectType: 'campaign', source: 'Campaign', status: 'done', dueDate: '2026-04-20', assignments: 0, plannedHrs: 0, billValue: 0 },
-  { id: 't10', name: 'Landing Page A/B Testing', taskId: 'CAM-401', project: 'Performance Max Q2', projectType: 'campaign', source: 'Campaign', status: 'not-started', dueDate: '2026-06-05', assignments: 0, plannedHrs: 0, billValue: 0 },
-  { id: 't11', name: 'Email Drip Copywriting', taskId: 'CAM-402', project: 'Performance Max Q2', projectType: 'campaign', source: 'Campaign', status: 'in-progress', dueDate: '2026-05-15', assignments: 1, plannedHrs: 30, billValue: 3750 },
-];
+const TASKS_DATA: TaskRow[] = [];
 
 interface AssignmentRow {
   id: string; assignee: string; assigneeType: 'user' | 'job-role';
@@ -173,17 +151,7 @@ interface AssignmentRow {
   startDate: string; endDate: string; distribution: 'automatic' | 'manual';
   isOverallocated: boolean; hasConflict: boolean;
 }
-const ASSIGNMENTS_DATA: AssignmentRow[] = [
-  { id: 'a1', assignee: 'Michael Chen', assigneeType: 'user', task: 'Design System Migration', project: 'Mobile App Redesign', jobRole: 'UX/UI Designer', plannedHrs: 80, actualHrs: 32, billRate: 145, costRate: 95, startDate: '2026-04-01', endDate: '2026-05-15', distribution: 'automatic', isOverallocated: false, hasConflict: false },
-  { id: 'a2', assignee: 'Priya Nair', assigneeType: 'user', task: 'Auth Service Refactor', project: 'Platform Core', jobRole: 'Integration Engineer', plannedHrs: 40, actualHrs: 0, billRate: 155, costRate: 100, startDate: '2026-04-14', endDate: '2026-04-30', distribution: 'automatic', isOverallocated: false, hasConflict: false },
-  { id: 'a3', assignee: 'Data Engineer (Role)', assigneeType: 'job-role', task: 'ETL Pipeline Hardening', project: 'Data Analytics Platform', jobRole: 'Data Engineer', plannedHrs: 120, actualHrs: 90, billRate: 155, costRate: 100, startDate: '2026-03-15', endDate: '2026-05-20', distribution: 'manual', isOverallocated: false, hasConflict: false },
-  { id: 'a4', assignee: 'Jacob Torres', assigneeType: 'user', task: 'Back-end Schema Mapping', project: 'PDF Services', jobRole: 'Backend Engineer', plannedHrs: 40, actualHrs: 15, billRate: 160, costRate: 105, startDate: '2026-04-07', endDate: '2026-04-25', distribution: 'automatic', isOverallocated: true, hasConflict: true },
-  { id: 'a5', assignee: 'Priya Nair', assigneeType: 'user', task: 'Back-end Schema Mapping', project: 'PDF Services', jobRole: 'Integration Engineer', plannedHrs: 60, actualHrs: 20, billRate: 150, costRate: 98, startDate: '2026-04-07', endDate: '2026-04-25', distribution: 'manual', isOverallocated: false, hasConflict: false },
-  { id: 'a6', assignee: 'Anita Rao', assigneeType: 'user', task: 'Q2 Creative Assets Production', project: 'Summer Launch 2026', jobRole: 'Content Strategist', plannedHrs: 50, actualHrs: 20, billRate: 130, costRate: 85, startDate: '2026-04-01', endDate: '2026-05-01', distribution: 'automatic', isOverallocated: false, hasConflict: false },
-  { id: 'a7', assignee: 'Jacob Torres', assigneeType: 'user', task: 'Q2 Creative Assets Production', project: 'Summer Launch 2026', jobRole: 'Backend Engineer', plannedHrs: 20, actualHrs: 5, billRate: 160, costRate: 105, startDate: '2026-04-10', endDate: '2026-04-30', distribution: 'automatic', isOverallocated: true, hasConflict: true },
-  { id: 'a8', assignee: 'Content Strategist (Role)', assigneeType: 'job-role', task: 'Email Drip Copywriting', project: 'Performance Max Q2', jobRole: 'Content Strategist', plannedHrs: 30, actualHrs: 8, billRate: 125, costRate: 80, startDate: '2026-04-14', endDate: '2026-05-15', distribution: 'manual', isOverallocated: false, hasConflict: false },
-  { id: 'a9', assignee: 'Marcus Lee', assigneeType: 'user', task: 'API Gateway Refactor', project: 'Platform Core', jobRole: 'DevOps Engineer', plannedHrs: 40, actualHrs: 10, billRate: 165, costRate: 110, startDate: '2026-04-07', endDate: '2026-05-30', distribution: 'automatic', isOverallocated: false, hasConflict: false },
-];
+const ASSIGNMENTS_DATA: AssignmentRow[] = [];
 
 interface JobRoleRow {
   role: string; activeAssignments: number; headcount: number;

@@ -103,6 +103,9 @@ const allMenuItems: Record<Page, MenuItem> = {
   'users': { id: 'users' as Page, label: 'Users', icon: Users },
   'job-roles': { id: 'job-roles' as Page, label: 'Job Roles', icon: Briefcase },
   'rate-cards': { id: 'rate-cards' as Page, label: 'Rate Cards', icon: CreditCard },
+  'agency-detail': { id: 'agency-detail' as Page, label: 'Agency Details', icon: Building2 },
+  'sub-agency-detail': { id: 'sub-agency-detail' as Page, label: 'Sub-Agency Details', icon: Building2 },
+  'tie-up-detail': { id: 'tie-up-detail' as Page, label: 'Tie-Up Details', icon: Handshake },
   'ui-customization': { id: 'ui-customization' as Page, label: 'UI Customization', icon: Palette },
   'api-config': { id: 'api-config' as Page, label: 'API Config', icon: Key },
   'webhook-management': { id: 'webhook-management' as Page, label: 'Webhooks', icon: Webhook },
@@ -114,6 +117,7 @@ const allMenuItems: Record<Page, MenuItem> = {
   'enhanced-staffing': { id: 'enhanced-staffing' as Page, label: 'Enhanced Staffing', icon: Workflow },
   'access-rules': { id: 'access-rules' as Page, label: 'Access Rules', icon: ShieldCheck },
   'profile': { id: 'profile' as Page, label: 'Profile', icon: UserCircle },
+  'super-admin': { id: 'super-admin' as Page, label: 'Super Admin', icon: ShieldCheck },
 };
 
 export const SIDEBAR_MENU_SECTIONS: MenuSection[] = [
@@ -265,7 +269,25 @@ export function Sidebar({ currentPage, onPageChange, collapsed, onToggleCollapse
     );
   };
 
-  const menuSections = SIDEBAR_MENU_SECTIONS;
+  // SUPER_ADMIN gets an extra section pinned at the top. We read the role
+  // from localStorage cache populated by AuthContext to avoid a sidebar→auth
+  // import cycle and to render synchronously without flicker.
+  const role = (() => {
+    if (typeof window === 'undefined') return null
+    try { return JSON.parse(localStorage.getItem('rep_user') ?? 'null')?.role ?? null }
+    catch { return null }
+  })()
+
+  const menuSections = role === 'SUPER_ADMIN'
+    ? [
+        {
+          id: 'super-admin-section',
+          label: 'Super Admin',
+          items: [allMenuItems['super-admin']],
+        } as MenuSection,
+        ...SIDEBAR_MENU_SECTIONS,
+      ]
+    : SIDEBAR_MENU_SECTIONS;
 
   const toggleSection = (sectionId: string) => {
     if (expandedSections.includes(sectionId)) {

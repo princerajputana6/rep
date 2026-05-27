@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -332,10 +333,39 @@ const industries = [
 
 const currencies = ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'INR'];
 
+// Maps an API client doc into the rich local Client shape, defaulting
+// the financial / mapping fields the API doesn't track yet.
+function mapApiToClient(c: Record<string, unknown>): Client {
+  return {
+    id: String(c._id ?? c.id ?? ''),
+    name: String(c.name ?? '—'),
+    industry: String(c.industry ?? 'Other'),
+    billingModel: 'retainer',
+    targetMargin: 35, minMargin: 25, paymentTerms: 30, retainerValue: 0,
+    currency: 'USD',
+    primaryAgencyId: String(c.agencyId ?? ''),
+    primaryAgencyName: '',
+    status: (String(c.status ?? 'ACTIVE').toLowerCase() === 'inactive' ? 'inactive' : 'active') as Client['status'],
+    createdAt: String(c.createdAt ?? new Date().toISOString()).slice(0, 10),
+    totalRevenue: Number(c.revenue ?? 0), totalCost: 0,
+    grossMargin: 0, netMargin: 0, retainerUtilization: 0, projectCount: 0,
+    agencies: [], mappingStatus: 'unmapped', ppmMappings: 0, unmappedProjects: 0,
+  }
+}
+
 export function ClientMaster() {
-  const [clients, setClients] = useState<Client[]>(mockClients);
-  const [mappings, setMappings] = useState<PPMMapping[]>(mockPPMMappings);
-  const [alerts, setAlerts] = useState<FinancialAlert[]>(mockAlerts);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loadingClients, setLoadingClients] = useState(true);
+  const [mappings, setMappings] = useState<PPMMapping[]>([]);
+  const [alerts, setAlerts] = useState<FinancialAlert[]>([]);
+
+  useEffect(() => {
+    setLoadingClients(true);
+    api.get<Record<string, unknown>[]>('/clients')
+      .then((rows) => setClients((Array.isArray(rows) ? rows : []).map(mapApiToClient)))
+      .catch((e: Error) => toast.error(e.message ?? 'Failed to load clients'))
+      .finally(() => setLoadingClients(false));
+  }, []);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showMappingDialog, setShowMappingDialog] = useState(false);

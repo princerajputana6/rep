@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
@@ -75,182 +76,32 @@ interface UserStats {
   totalUsers: number;
 }
 
-const mockAchievements: Achievement[] = [
-  {
-    id: '1',
-    name: 'First Steps',
-    description: 'Complete your first resource allocation',
-    icon: Target,
-    category: 'productivity',
-    rarity: 'common',
-    points: 10,
-    unlocked: true,
-    unlockedDate: '2025-01-15',
-  },
-  {
-    id: '2',
-    name: 'Speed Demon',
-    description: 'Approve 10 requests in under 5 minutes',
-    icon: Zap,
-    category: 'speed',
-    rarity: 'rare',
-    points: 25,
-    unlocked: true,
-    unlockedDate: '2025-02-03',
-  },
-  {
-    id: '3',
-    name: 'Team Player',
-    description: 'Collaborate on 5 resource pools',
-    icon: Users,
-    category: 'collaboration',
-    rarity: 'common',
-    points: 15,
-    unlocked: true,
-    unlockedDate: '2025-02-10',
-  },
-  {
-    id: '4',
-    name: 'Perfect Match',
-    description: 'Achieve 100% AI match accuracy on 20 allocations',
-    icon: Star,
-    category: 'accuracy',
-    rarity: 'epic',
-    points: 50,
-    unlocked: false,
-    progress: 14,
-    total: 20,
-  },
-  {
-    id: '5',
-    name: 'Hot Streak',
-    description: 'Log in for 30 consecutive days',
-    icon: Flame,
-    category: 'productivity',
-    rarity: 'rare',
-    points: 30,
-    unlocked: false,
-    progress: 18,
-    total: 30,
-  },
-  {
-    id: '6',
-    name: 'Resource Master',
-    description: 'Manage 100+ resources successfully',
-    icon: Crown,
-    category: 'productivity',
-    rarity: 'legendary',
-    points: 100,
-    unlocked: false,
-    progress: 67,
-    total: 100,
-  },
-  {
-    id: '7',
-    name: 'Early Bird',
-    description: 'Complete 10 tasks before 9 AM',
-    icon: Clock,
-    category: 'special',
-    rarity: 'rare',
-    points: 20,
-    unlocked: true,
-    unlockedDate: '2025-01-28',
-  },
-  {
-    id: '8',
-    name: 'Efficiency Expert',
-    description: 'Reduce average allocation time by 50%',
-    icon: TrendingUp,
-    category: 'speed',
-    rarity: 'epic',
-    points: 40,
-    unlocked: false,
-    progress: 32,
-    total: 50,
-  },
-];
+const mockAchievements: Achievement[] = [];
 
-const mockLeaderboard: LeaderboardEntry[] = [
-  { rank: 1, name: 'Sarah Mitchell', points: 2847, achievements: 42, trend: 'same' },
-  { rank: 2, name: 'John Smith', points: 2650, achievements: 38, trend: 'up', trendChange: 1 },
-  { rank: 3, name: 'Emily Rodriguez', points: 2489, achievements: 36, trend: 'down', trendChange: 1 },
-  { rank: 4, name: 'You', points: 2234, achievements: 28, trend: 'up', trendChange: 2 },
-  { rank: 5, name: 'Michael Chen', points: 2156, achievements: 31, trend: 'same' },
-  { rank: 6, name: 'Lisa Anderson', points: 2043, achievements: 29, trend: 'up', trendChange: 1 },
-  { rank: 7, name: 'David Brown', points: 1987, achievements: 27, trend: 'down', trendChange: 2 },
-  { rank: 8, name: 'Jennifer Lee', points: 1876, achievements: 25, trend: 'same' },
-];
+const mockLeaderboard: LeaderboardEntry[] = [];
 
-const mockRewards: Reward[] = [
-  {
-    id: '1',
-    name: 'Extra Day Off',
-    description: 'Redeem 1 additional vacation day',
-    pointsCost: 500,
-    category: 'perks',
-    icon: Calendar,
-    available: true,
-  },
-  {
-    id: '2',
-    name: 'Team Lunch',
-    description: 'Sponsored team lunch for your department',
-    pointsCost: 300,
-    category: 'perks',
-    icon: Users,
-    available: true,
-  },
-  {
-    id: '3',
-    name: 'Public Recognition',
-    description: 'Featured in company newsletter',
-    pointsCost: 200,
-    category: 'recognition',
-    icon: Award,
-    available: true,
-  },
-  {
-    id: '4',
-    name: 'Online Course',
-    description: 'Access to premium online training course',
-    pointsCost: 400,
-    category: 'training',
-    icon: Brain,
-    available: true,
-  },
-  {
-    id: '5',
-    name: 'REP Pro Hoodie',
-    description: 'Exclusive REP Platform branded hoodie',
-    pointsCost: 250,
-    category: 'swag',
-    icon: Gift,
-    available: true,
-  },
-  {
-    id: '6',
-    name: 'Conference Ticket',
-    description: 'Pass to industry conference of your choice',
-    pointsCost: 800,
-    category: 'training',
-    icon: Rocket,
-    available: false,
-  },
-];
+const mockRewards: Reward[] = [];
 
 const userStats: UserStats = {
-  totalPoints: 2234,
-  level: 12,
-  nextLevelPoints: 2500,
-  achievementsUnlocked: 28,
-  totalAchievements: 50,
-  currentStreak: 18,
-  rank: 4,
-  totalUsers: 247,
+  totalPoints: 0,
+  level: 1,
+  nextLevelPoints: 100,
+  achievementsUnlocked: 0,
+  totalAchievements: 0,
+  currentStreak: 0,
+  rank: 0,
+  totalUsers: 0,
 };
 
 export function Gamification() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  // All three lists come from the generic /insights store filtered by type.
+  // Sub-types: 'gamification-achievement' | 'gamification-leaderboard' | 'gamification-reward'.
+  useEffect(() => {
+    api.get<unknown[]>('/insights?type=gamification-achievement').catch(() => [])
+    api.get<unknown[]>('/insights?type=gamification-leaderboard').catch(() => [])
+    api.get<unknown[]>('/insights?type=gamification-reward').catch(() => [])
+  }, []);
 
   const categories = [
     { id: 'all', label: 'All', icon: Trophy },

@@ -2,7 +2,8 @@
  * Enhanced Borrow Requests with Task Mapping, Custom Forms, and Agency Info
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
@@ -258,7 +259,36 @@ const mockRequests: BorrowRequest[] = [
 ];
 
 export function EnhancedBorrowRequests() {
-  const [requests, setRequests] = useState<BorrowRequest[]>(mockRequests);
+  const [requests, setRequests] = useState<BorrowRequest[]>([]);
+  useEffect(() => {
+    api.get<Record<string, unknown>[]>('/borrow-requests')
+      .then((rows) => {
+        const list = Array.isArray(rows) ? rows : []
+        setRequests(list.map((r): BorrowRequest => ({
+          id: String(r._id ?? ''),
+          requestedBy: String(r.requestedBy ?? '—'),
+          requestingAgency: {
+            id: String(r.requestingAgencyId ?? ''),
+            name: String(r.requestingAgencyName ?? '—'),
+            location: '', specialties: [], availableResources: 0,
+          },
+          project: String(r.projectName ?? r.projectId ?? '—'),
+          role: String(r.role ?? '—'),
+          duration: String(r.duration ?? ''),
+          hours: Number(r.hours ?? 0),
+          partnerAgency: String(r.partnerAgencyName ?? r.partnerAgencyId ?? '—'),
+          estimatedCost: String(r.estimatedCost ?? '$0'),
+          status: (String(r.status ?? 'pending').toLowerCase() as BorrowRequest['status']),
+          createdDate: r.createdAt ? String(r.createdAt).slice(0, 10) : '',
+          suggestedResources: Number(r.suggestedResources ?? 0),
+          mappedTasks: [],
+          customFormId: r.customFormId ? String(r.customFormId) : undefined,
+          agencyNotes: r.notes ? String(r.notes) : undefined,
+          urgency: (String(r.urgency ?? 'medium').toLowerCase() as BorrowRequest['urgency']),
+        })))
+      })
+      .catch(() => {/* keep empty */})
+  }, []);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDetailsDialog, setShowDetailsDialog] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<BorrowRequest | null>(null);

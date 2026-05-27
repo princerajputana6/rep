@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, type ReactNode } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
@@ -1555,8 +1556,66 @@ function AddCampaignTaskDialog({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export function Assignments() {
-  const [integratedTasks, setIntegratedTasks] = useState(initIntegrated);
-  const [campaignTasks,   setCampaignTasks]   = useState(initCampaign);
+  const [integratedTasks, setIntegratedTasks] = useState<IntegratedTask[]>([]);
+  const [campaignTasks,   setCampaignTasks]   = useState<CampaignTask[]>([]);
+
+  // Hydrate from /tasks + /allocations. Each task gets its real allocations
+  // attached as `assignments`; UI features that need richer fields fall back
+  // to safe defaults.
+  useEffect(() => {
+    Promise.all([
+      api.get<Record<string, unknown>[]>('/tasks').catch(() => []),
+      api.get<Record<string, unknown>[]>('/allocations').catch(() => []),
+    ]).then(([tasks, allocs]) => {
+      const allocList = Array.isArray(allocs) ? allocs : []
+      const allocByTask = new Map<string, Assignment[]>()
+      for (const a of allocList) {
+        const tid = String(a.taskId ?? '')
+        if (!tid) continue
+        const entry: Assignment = {
+          id: String(a._id ?? ''),
+          assignmentType: (a.assignmentType === 'JOB_ROLE' ? 'job-role' : 'user'),
+          userId: a.resourceId ? String(a.resourceId) : undefined,
+          userName: undefined,
+          jobRole: '', plannedHours: Number(a.allocatedHours ?? 0), actualHours: 0,
+          billRate: 0, costRate: 0,
+          startDate: a.startDate ? String(a.startDate).slice(0, 10) : '',
+          endDate: a.endDate ? String(a.endDate).slice(0, 10) : '',
+          weekOf: '', distributionType: 'automatic',
+          dailyHours: { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 },
+          notes: String(a.notes ?? ''),
+        }
+        const list = allocByTask.get(tid) ?? []
+        list.push(entry); allocByTask.set(tid, list)
+      }
+
+      const intg: IntegratedTask[] = []
+      const camp: CampaignTask[] = []
+      const SRC: Record<string, IntegrationSource> = {
+        workfront: 'Workfront', jira: 'Jira', clickup: 'ClickUp',
+        asana: 'Asana', monday: 'Monday.com', zoho: 'Zoho',
+      }
+      const STATUS: Record<string, TaskStatus> = {
+        TODO: 'not-started', IN_PROGRESS: 'in-progress', BLOCKED: 'blocked',
+        DONE: 'done', COMPLETED: 'done',
+      }
+      ;(Array.isArray(tasks) ? tasks : []).forEach((t) => {
+        const id = String(t._id ?? '')
+        const assignments = allocByTask.get(id) ?? []
+        const status = STATUS[String(t.status ?? 'TODO').toUpperCase()] ?? 'not-started'
+        const src = SRC[String(t.externalSource ?? '').toLowerCase()]
+        const base = {
+          id, taskName: String(t.title ?? '—'),
+          taskId: String(t.externalId ?? id.slice(-6).toUpperCase()),
+          dueDate: t.dueDate ? String(t.dueDate).slice(0, 10) : '',
+          status, assignments,
+        }
+        if (src) intg.push({ ...base, source: src, projectName: String(t.projectId ?? '—') })
+        else camp.push({ ...base, campaignId: 'unassigned', campaignName: 'Unassigned' })
+      })
+      setIntegratedTasks(intg); setCampaignTasks(camp)
+    })
+  }, []);
 
   const allAssignments = useMemo(() => [
     ...integratedTasks.flatMap(t => t.assignments.map(a => ({ ...a, taskId: t.id, tab: 'integrated' }))),

@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -58,7 +59,34 @@ const worldCurrencies: Currency[] = [
 
 export function CurrencyMapping() {
   const [defaultCurrency, setDefaultCurrency] = useState('USD');
-  const [currencies, setCurrencies] = useState<Currency[]>(worldCurrencies);
+  const [currencies, setCurrencies] = useState<Currency[]>([]);
+
+  // Loads agency-saved currency rates from /currency-mappings. The
+  // hardcoded `worldCurrencies` list is kept above only as a metadata
+  // reference (symbols, region) for any matching code returned by the API.
+  useEffect(() => {
+    api.get<Record<string, unknown>[]>('/currency-mappings')
+      .then((rows) => {
+        const list = Array.isArray(rows) ? rows : []
+        const refByCode: Record<string, Currency> = {}
+        worldCurrencies.forEach((c) => { refByCode[c.code] = c })
+        setCurrencies(list.map((r): Currency => {
+          const code = String(r.toCurrency ?? r.code ?? '—')
+          const ref = refByCode[code]
+          return {
+            code,
+            name: ref?.name ?? code,
+            symbol: ref?.symbol ?? code,
+            exchangeRate: Number(r.rate ?? 1),
+            lastUpdated: r.effectiveDate ? String(r.effectiveDate).slice(0, 10) : '',
+            trend: 'stable',
+            trendValue: 0,
+            region: ref?.region ?? 'Other',
+          }
+        }))
+      })
+      .catch(() => {/* keep empty */})
+  }, []);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRegion, setSelectedRegion] = useState<string>('all');
   const [editingRate, setEditingRate] = useState<string | null>(null);

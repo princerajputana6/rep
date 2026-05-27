@@ -1,43 +1,61 @@
+'use client';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
 import { TrendingUp, TrendingDown, AlertCircle, Users } from 'lucide-react';
+import { api } from '@/lib/api';
+
+interface AgencyUtil { agency: string; utilization: number; capacity: number; allocated: number; color: string }
+interface RoleUtil { role: string; utilization: number; demand: string; gap: number }
+interface PersonUtil { name: string; role: string; utilization: number; hours: number }
+
+const ROLE_COLORS = ['#3b82f6', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#6b7280'];
 
 export function CapacityUtilization() {
-  const utilizationByAgency = [
-    { agency: 'Acme Digital', utilization: 82, capacity: 347, allocated: 285, color: '#3b82f6' },
-    { agency: 'CreativeCo', utilization: 76, capacity: 215, allocated: 163, color: '#8b5cf6' },
-    { agency: 'TechVentures', utilization: 88, capacity: 428, allocated: 377, color: '#06b6d4' },
-    { agency: 'Digital Wave', utilization: 71, capacity: 156, allocated: 111, color: '#10b981' },
-  ];
+  const [utilizationByAgency, setUtilizationByAgency] = useState<AgencyUtil[]>([]);
+  const [utilizationTrend, setUtilizationTrend] = useState<{ week: string; internal: number; borrowed: number; lent: number }[]>([]);
+  const [roleUtilization, setRoleUtilization] = useState<RoleUtil[]>([]);
+  const [overUtilized, setOverUtilized] = useState<PersonUtil[]>([]);
+  const [underUtilized, setUnderUtilized] = useState<PersonUtil[]>([]);
 
-  const utilizationTrend = [
-    { week: 'Week 1', internal: 75, borrowed: 12, lent: 18 },
-    { week: 'Week 2', internal: 78, borrowed: 15, lent: 22 },
-    { week: 'Week 3', internal: 82, borrowed: 18, lent: 25 },
-    { week: 'Week 4', internal: 76, borrowed: 14, lent: 20 },
-  ];
-
-  const roleUtilization = [
-    { role: 'Senior Developer', utilization: 92, demand: 'high', gap: 15 },
-    { role: 'UX Designer', utilization: 87, demand: 'medium', gap: 8 },
-    { role: 'Product Manager', utilization: 95, demand: 'high', gap: 12 },
-    { role: 'Data Analyst', utilization: 68, demand: 'low', gap: 0 },
-    { role: 'QA Engineer', utilization: 74, demand: 'medium', gap: 5 },
-  ];
-
-  const overUtilized = [
-    { name: 'Sarah Johnson', role: 'Senior Developer', utilization: 118, hours: 47.2 },
-    { name: 'Michael Chen', role: 'UX Designer', utilization: 112, hours: 44.8 },
-    { name: 'Emma Davis', role: 'Product Manager', utilization: 105, hours: 42.0 },
-  ];
-
-  const underUtilized = [
-    { name: 'James Wilson', role: 'Data Analyst', utilization: 35, hours: 14.0 },
-    { name: 'Lisa Anderson', role: 'QA Engineer', utilization: 42, hours: 16.8 },
-    { name: 'Tom Brown', role: 'Developer', utilization: 48, hours: 19.2 },
-  ];
+  useEffect(() => {
+    Promise.all([
+      api.get<{ summary: { avgUtilization: number }; byRole: { role: string; allocatedHours: number; resourceCount: number }[] }>('/analytics/capacity').catch(() => null),
+      api.get<{ summary: { totalResources: number; underutilizedCount: number; avgUtilizationPct: number }; underutilized: { name: string; role: string; allocatedHours: number; utilizationPct: number }[] }>('/analytics/hidden-capacity').catch(() => null),
+    ]).then(([cap, hidden]) => {
+      if (cap) {
+        setUtilizationByAgency([{
+          agency: 'My Agency',
+          utilization: cap.summary.avgUtilization,
+          capacity: hidden?.summary.totalResources ?? 0,
+          allocated: cap.byRole.reduce((s, r) => s + r.resourceCount, 0),
+          color: ROLE_COLORS[0],
+        }]);
+        setRoleUtilization(cap.byRole.map((r) => {
+          const util = r.resourceCount > 0
+            ? Math.min(100, Math.round((r.allocatedHours / Math.max(r.resourceCount * 40, 1)) * 100))
+            : 0;
+          return {
+            role: r.role,
+            utilization: util,
+            demand: util > 85 ? 'high' : util > 60 ? 'medium' : 'low',
+            gap: Math.max(0, util - 85),
+          };
+        }));
+      }
+      if (hidden) {
+        setUnderUtilized(hidden.underutilized.slice(0, 10).map((p) => ({
+          name: p.name, role: p.role, utilization: p.utilizationPct, hours: p.allocatedHours,
+        })));
+      }
+      // Weekly trend + over-utilized lists require per-week aggregation that
+      // doesn't exist on the backend yet — leave empty.
+      setUtilizationTrend([]);
+      setOverUtilized([]);
+    });
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -50,32 +68,33 @@ export function CapacityUtilization() {
         <Card>
           <CardContent className="p-4">
             <div className="text-sm text-gray-600">Network Utilization</div>
-            <div className="text-2xl font-semibold text-gray-900 mt-1">78.5%</div>
-            <div className="flex items-center gap-1 text-xs text-green-600 mt-1">
-              <TrendingUp className="w-3 h-3" />
-              +5.2% from last month
+            <div className="text-2xl font-semibold text-gray-900 mt-1">
+              {utilizationByAgency[0]?.utilization ?? 0}%
             </div>
+            <div className="text-xs text-gray-500 mt-1">All agencies</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div className="text-sm text-gray-600">Over-Utilized</div>
-            <div className="text-2xl font-semibold text-red-600 mt-1">47</div>
+            <div className="text-2xl font-semibold text-red-600 mt-1">{overUtilized.length}</div>
             <div className="text-xs text-gray-500 mt-1">&gt;95% utilization</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div className="text-sm text-gray-600">Under-Utilized</div>
-            <div className="text-2xl font-semibold text-amber-600 mt-1">128</div>
+            <div className="text-2xl font-semibold text-amber-600 mt-1">{underUtilized.length}</div>
             <div className="text-xs text-gray-500 mt-1">&lt;50% utilization</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
             <div className="text-sm text-gray-600">Staffing Gaps</div>
-            <div className="text-2xl font-semibold text-gray-900 mt-1">23</div>
-            <div className="text-xs text-gray-500 mt-1">Across 15 projects</div>
+            <div className="text-2xl font-semibold text-gray-900 mt-1">
+              {roleUtilization.reduce((s, r) => s + r.gap, 0)}
+            </div>
+            <div className="text-xs text-gray-500 mt-1">Across {roleUtilization.length} roles</div>
           </CardContent>
         </Card>
       </div>

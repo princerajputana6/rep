@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
@@ -82,8 +83,35 @@ const mockNotifications: Notification[] = [
   },
 ];
 
+// Best-effort "X minutes/hours ago" formatter.
+function timeAgo(iso: string): string {
+  const t = new Date(iso).getTime()
+  const diff = Math.max(0, Date.now() - t)
+  const m = Math.floor(diff / 60000)
+  if (m < 1) return 'just now'
+  if (m < 60) return `${m} minute${m === 1 ? '' : 's'} ago`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h} hour${h === 1 ? '' : 's'} ago`
+  const d = Math.floor(h / 24)
+  return `${d} day${d === 1 ? '' : 's'} ago`
+}
+
 export function RealTimeNotifications() {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  useEffect(() => {
+    api.get<Record<string, unknown>[]>('/notifications')
+      .then((rows) => setNotifications((Array.isArray(rows) ? rows : []).map((r): Notification => ({
+        id: String(r._id ?? ''),
+        type: (r.type as Notification['type']) ?? 'info',
+        title: String(r.title ?? '—'),
+        message: String(r.message ?? ''),
+        timestamp: r.createdAt ? timeAgo(String(r.createdAt)) : '',
+        read: Boolean(r.read),
+        priority: (r.priority as Notification['priority']) ?? 'medium',
+        category: String(r.category ?? 'general'),
+      }))))
+      .catch(() => {/* keep empty */})
+  }, []);
   const [preferences, setPreferences] = useState({
     approvals: true,
     capacity: true,

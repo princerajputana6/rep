@@ -2,7 +2,8 @@
  * Enhanced Resource Approvals with Comments and Discussion
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
@@ -180,7 +181,35 @@ const mockApprovals: ApprovalRequest[] = [
 ];
 
 export function EnhancedResourceApprovals() {
-  const [approvals, setApprovals] = useState<ApprovalRequest[]>(mockApprovals);
+  const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
+  useEffect(() => {
+    api.get<Record<string, unknown>[]>('/resource-approvals')
+      .then((rows) => {
+        const list = Array.isArray(rows) ? rows : []
+        setApprovals(list.map((r): ApprovalRequest => ({
+          id: String(r._id ?? ''),
+          requestId: String(r.requestId ?? r._id ?? ''),
+          type: ((r.type as ApprovalRequest['type']) ?? 'allocation'),
+          title: String(r.title ?? '—'),
+          requester: String(r.requester ?? r.requestedBy ?? '—'),
+          requesterAgency: String(r.requesterAgency ?? r.requesterAgencyName ?? '—'),
+          details: {
+            resource: r.resourceName ? String(r.resourceName) : undefined,
+            role: r.role ? String(r.role) : undefined,
+            project: r.projectName ? String(r.projectName) : undefined,
+            duration: r.duration ? String(r.duration) : undefined,
+            hours: r.hours ? Number(r.hours) : undefined,
+            cost: r.estimatedCost ? String(r.estimatedCost) : undefined,
+          },
+          status: (String(r.status ?? 'pending').toLowerCase() as ApprovalRequest['status']),
+          priority: (String(r.priority ?? 'medium').toLowerCase() as ApprovalRequest['priority']),
+          submittedDate: r.createdAt ? String(r.createdAt).slice(0, 10) : '',
+          dueDate: r.slaDeadline ? String(r.slaDeadline).slice(0, 10) : '',
+          comments: [], approvers: [], currentApprover: '',
+        })))
+      })
+      .catch(() => {/* keep empty */})
+  }, []);
   const [selectedApproval, setSelectedApproval] = useState<ApprovalRequest | null>(null);
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [showCommentDialog, setShowCommentDialog] = useState(false);

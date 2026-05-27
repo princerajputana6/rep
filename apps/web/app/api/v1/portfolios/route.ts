@@ -9,7 +9,8 @@ export async function GET(req: NextRequest) {
   await connectDB()
   const { searchParams } = new URL(req.url)
   const status = searchParams.get('status')
-  const filter: Record<string, unknown> = { agencyId: ctx.agencyId }
+  const agencyId = searchParams.get('agencyId') ?? ctx.agencyId
+  const filter: Record<string, unknown> = { agencyId }
   if (status) filter.status = status
   const data = await Portfolio.find(filter).sort({ createdAt: -1 }).lean()
   return ok(data)

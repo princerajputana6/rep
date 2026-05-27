@@ -1,3 +1,6 @@
+'use client';
+import { useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
@@ -36,32 +39,19 @@ import {
   ComposedChart,
 } from 'recharts';
 
-const forecastData = [
-  { month: 'Feb', actual: 78, predicted: 78, capacity: 100, demand: 82 },
-  { month: 'Mar', actual: 82, predicted: 81, capacity: 100, demand: 85 },
-  { month: 'Apr', actual: null, predicted: 85, capacity: 100, demand: 88 },
-  { month: 'May', actual: null, predicted: 88, capacity: 100, demand: 92 },
-  { month: 'Jun', actual: null, predicted: 92, capacity: 100, demand: 95 },
-  { month: 'Jul', actual: null, predicted: 94, capacity: 100, demand: 98 },
-];
+const forecastData: { month: string; actual: number | null; predicted: number; capacity: number; demand: number }[] = [];
 
-const roleUtilizationForecast = [
-  { role: 'Full Stack Dev', current: 85, predicted: 92, shortfall: 7 },
-  { role: 'Frontend Dev', current: 78, predicted: 88, shortfall: 10 },
-  { role: 'Backend Dev', current: 92, predicted: 96, shortfall: 4 },
-  { role: 'DevOps', current: 88, predicted: 98, shortfall: 10 },
-  { role: 'Data Engineer', current: 75, predicted: 85, shortfall: 10 },
-  { role: 'UX Designer', current: 82, predicted: 86, shortfall: 4 },
-];
+const roleUtilizationForecast: { role: string; current: number; predicted: number; shortfall: number }[] = [];
 
-const demandTrends = [
-  { quarter: 'Q1 2025', demand: 245, supply: 280, surplus: 35 },
-  { quarter: 'Q2 2025', demand: 268, supply: 285, surplus: 17 },
-  { quarter: 'Q3 2025', demand: 295, supply: 290, surplus: -5 },
-  { quarter: 'Q4 2025', demand: 318, supply: 295, surplus: -23 },
-];
+const demandTrends: { quarter: string; demand: number; supply: number; surplus: number }[] = [];
 
 export function PredictivePlanning() {
+  // Insights of type='prediction' are pulled but not yet rendered here.
+  // When the user wires the chart props to predictions, this hook is the seam.
+  useEffect(() => {
+    api.get('/insights?type=prediction').catch(() => {/* keep empty */})
+  }, []);
+
   return (
     <div className="space-y-6">
       {/* Header */}

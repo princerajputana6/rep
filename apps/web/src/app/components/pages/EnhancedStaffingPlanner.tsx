@@ -3,7 +3,8 @@
  * Connects to Financial, Hidden Capacity, and Campaign modules
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
@@ -286,9 +287,35 @@ const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444'];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
+// Maps an API staffing-plan doc into the rich ProjectPlan shape, defaulting
+// the timeline/dependency fields the API doesn't track yet.
+function mapPlan(p: Record<string, unknown>): ProjectPlan {
+  return {
+    id: String(p._id ?? ''),
+    projectName: String(p.name ?? p.projectName ?? 'Untitled Plan'),
+    client: String(p.client ?? ''),
+    startDate: p.startDate ? String(p.startDate).slice(0, 10) : '',
+    endDate: p.endDate ? String(p.endDate).slice(0, 10) : '',
+    status: ((p.status as ProjectPlan['status']) ?? 'planning'),
+    totalBudget: Number(p.totalBudget ?? 0),
+    spent: Number(p.spent ?? 0),
+    tasks: [], hiddenCapacityUsed: 0, borrowedResources: 0, collaborators: [],
+  }
+}
+
 export function EnhancedStaffingPlanner() {
-  const [projects, setProjects] = useState<ProjectPlan[]>(mockProjects);
-  const [selectedProject, setSelectedProject] = useState<ProjectPlan | null>(projects[0]);
+  const [projects, setProjects] = useState<ProjectPlan[]>([]);
+  const [selectedProject, setSelectedProject] = useState<ProjectPlan | null>(null);
+
+  useEffect(() => {
+    api.get<Record<string, unknown>[]>('/staffing-plans')
+      .then((rows) => {
+        const list = (Array.isArray(rows) ? rows : []).map(mapPlan)
+        setProjects(list)
+        setSelectedProject(list[0] ?? null)
+      })
+      .catch(() => {/* keep empty */})
+  }, []);
   const [view, setView] = useState<'timeline' | 'resources' | 'dependencies' | 'collaboration' | 'periodview'>('timeline');
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [planPeriod, setPlanPeriod] = useState<'monthly' | 'quarterly' | 'annual'>('quarterly');

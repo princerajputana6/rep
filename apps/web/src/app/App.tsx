@@ -9,6 +9,8 @@ import { BreadcrumbNav } from '@/app/components/layout/BreadcrumbNav';
 import { Toaster } from '@/app/components/ui/sonner';
 import { AgencyProvider } from '@/app/context/AgencyContext';
 import { AuthProvider, useAuth } from '@/app/context/AuthContext';
+import { NavigationProvider, useNavigation } from '@/app/context/NavigationContext';
+import { SubscriptionProvider } from '@/app/context/SubscriptionContext';
 import { LoginPage } from '@/app/components/pages/LoginPage';
 import { rbacService, Role } from '@/app/services/RBACService';
 import { QuickTaskWidget } from '@/app/components/layout/QuickTaskWidget';
@@ -58,6 +60,10 @@ const Assignments = lazy(async () => ({ default: (await import('@/app/components
 const Timesheets = lazy(async () => ({ default: (await import('@/app/components/pages/Timesheets')).Timesheets }));
 const Portfolio = lazy(async () => ({ default: (await import('@/app/components/pages/Portfolio')).Portfolio }));
 const ProgramManagement = lazy(async () => ({ default: (await import('@/app/components/pages/Program')).ProgramManagement }));
+const AgencyDetail = lazy(async () => ({ default: (await import('@/app/components/pages/AgencyDetail')).AgencyDetail }));
+const SubAgencyDetail = lazy(async () => ({ default: (await import('@/app/components/pages/SubAgencyDetail')).SubAgencyDetail }));
+const TieUpDetail = lazy(async () => ({ default: (await import('@/app/components/pages/TieUpDetail')).TieUpDetail }));
+const SuperAdmin = lazy(async () => ({ default: (await import('@/app/components/pages/SuperAdmin')).SuperAdmin }));
 
 type IdleWindow = Window & {
   requestIdleCallback?: (callback: () => void) => number;
@@ -67,6 +73,7 @@ type IdleWindow = Window & {
 export type Page =
   | 'home' | 'dashboard' | 'users' | 'job-roles' | 'rate-cards'
   | 'agencies' | 'sub-agencies' | 'tie-ups' | 'resource-pools'
+  | 'agency-detail' | 'sub-agency-detail' | 'tie-up-detail' | 'super-admin'
   | 'projects' | 'tasks' | 'capacity' | 'borrow-requests'
   | 'resource-approvals' | 'financials' | 'hidden-capacity'
   | 'industry-standard-hidden-capacity' | 'audit-logs' | 'integrations'
@@ -87,7 +94,8 @@ const BACKEND_TO_FRONTEND_ROLE: Record<string, Role> = {
 
 function AppContent() {
   const { isAuthenticated, isLoading, user } = useAuth();
-  const [currentPage, setCurrentPage] = useState<Page>('home');
+  const { currentPage, detailId, navigate } = useNavigation();
+  const setCurrentPage = (p: Page) => navigate(p);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useEffect(() => {
@@ -192,6 +200,13 @@ function AppContent() {
       case 'portfolio': return <Portfolio />;
       case 'program': return <ProgramManagement />;
       case 'profile': return <UserProfile />;
+      case 'agency-detail':
+        return detailId ? <AgencyDetail agencyId={detailId} /> : <AgencyNetwork />;
+      case 'sub-agency-detail':
+        return detailId ? <SubAgencyDetail subAgencyId={detailId} /> : <SubAgencies />;
+      case 'tie-up-detail':
+        return detailId ? <TieUpDetail tieUpId={detailId} /> : <TieUps />;
+      case 'super-admin': return <SuperAdmin />;
       default: return <Dashboard />;
     }
   };
@@ -225,7 +240,11 @@ function App() {
   return (
     <AuthProvider>
       <AgencyProvider>
-        <AppContent />
+        <SubscriptionProvider>
+          <NavigationProvider>
+            <AppContent />
+          </NavigationProvider>
+        </SubscriptionProvider>
       </AgencyProvider>
     </AuthProvider>
   );

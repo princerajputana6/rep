@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
@@ -235,8 +236,32 @@ export function HiddenCapacity() {
   // Heatmap time-horizon filter
   const [horizon, setHorizon]         = useState<'all' | '1' | '2' | '4'>('all');
 
-  // Agency controls
+  // Agency controls (still local — no agency-opt-in collection yet)
   const [agencies, setAgencies]       = useState<AgencyControl[]>(initialAgencyControls);
+
+  // Real capacity signals from /analytics/hidden-capacity (role rollup).
+  const [allCapacitySignals, setAllCapacitySignals] = useState<CapacitySignal[]>([]);
+  useEffect(() => {
+    api.get<{ byRole: { role: string; idleHours: number; count: number }[] }>('/analytics/hidden-capacity')
+      .then((res) => {
+        setAllCapacitySignals(res.byRole.map((r): CapacitySignal => {
+          const idle = r.idleHours;
+          return {
+            role: r.role,
+            agency: 'My Agency',
+            availableHours: idle,
+            resources: r.count,
+            liquidity: idle > 100 ? 'green' : idle > 40 ? 'amber' : 'red',
+            validTieUps: 0,
+            avgCostRate: 0,
+            timeHorizon: '1 month',
+            trend: 'flat',
+            trendPct: 0,
+          };
+        }));
+      })
+      .catch(() => {/* keep empty */});
+  }, []);
 
   const toggleAgency = (id: string) => {
     setAgencies(prev => prev.map(a =>

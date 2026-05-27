@@ -5,7 +5,8 @@
  * for integrating REP Platform events with external systems.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -286,7 +287,27 @@ const mockDeliveries: WebhookDelivery[] = [
 ];
 
 export function WebhookManagement() {
-  const [webhooks, setWebhooks] = useState<WebhookConfig[]>(mockWebhooks);
+  const [webhooks, setWebhooks] = useState<WebhookConfig[]>([]);
+  useEffect(() => {
+    api.get<Record<string, unknown>[]>('/webhooks')
+      .then((rows) => setWebhooks((Array.isArray(rows) ? rows : []).map((r): WebhookConfig => ({
+        id: String(r._id ?? ''),
+        name: String(r.name ?? '—'),
+        url: String(r.url ?? ''),
+        events: Array.isArray(r.events) ? (r.events as string[]) : [],
+        isActive: r.active !== false,
+        secret: r.secret ? '••••••••' : '',
+        description: String(r.description ?? ''),
+        retryPolicy: 'exponential',
+        maxRetries: 3,
+        timeout: 30,
+        headers: {},
+        createdAt: r.createdAt ? String(r.createdAt).slice(0, 10) : '',
+        lastTriggered: r.lastTriggeredAt ? String(r.lastTriggeredAt) : null,
+        deliveryStats: { total: 0, successful: 0, failed: Number(r.failureCount ?? 0), successRate: 100 },
+      }))))
+      .catch(() => {/* keep empty */})
+  }, []);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showTestDialog, setShowTestDialog] = useState(false);

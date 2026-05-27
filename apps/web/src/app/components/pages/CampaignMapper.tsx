@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -121,14 +122,7 @@ interface CampaignROI {
   attribution: 'first-touch' | 'last-touch' | 'linear';
   roi: number;         // %
 }
-const CAMPAIGN_ROI_DATA: CampaignROI[] = [
-  { name: 'Brand Awareness Q1', channel: 'Paid Social', spend: 18, revenue: 94, roas: 5.2, cpl: 42, leads: 428, conversions: 38, attribution: 'first-touch', roi: 422 },
-  { name: 'Email Nurture Series', channel: 'Email', spend: 4, revenue: 61, roas: 15.3, cpl: 12, leads: 333, conversions: 71, attribution: 'last-touch', roi: 1425 },
-  { name: 'SEO Content Push', channel: 'SEO', spend: 8, revenue: 48, roas: 6.0, cpl: 28, leads: 285, conversions: 44, attribution: 'linear', roi: 500 },
-  { name: 'Retargeting Display', channel: 'Display', spend: 12, revenue: 38, roas: 3.2, cpl: 68, leads: 176, conversions: 22, attribution: 'last-touch', roi: 217 },
-  { name: 'Influencer Campaign', channel: 'Influencer', spend: 22, revenue: 55, roas: 2.5, cpl: 110, leads: 200, conversions: 18, attribution: 'first-touch', roi: 150 },
-  { name: 'Product Launch Blitz', channel: 'Paid Social', spend: 30, revenue: 142, roas: 4.7, cpl: 58, leads: 517, conversions: 56, attribution: 'linear', roi: 373 },
-];
+const CAMPAIGN_ROI_DATA: CampaignROI[] = [];
 
 const CHANNEL_COLORS: Record<string, string> = {
   'Paid Social': '#8b5cf6',
@@ -149,38 +143,15 @@ interface ResourceConflict {
   severity: 'low' | 'medium' | 'high';
   resolution: string;
 }
-const RESOURCE_CONFLICTS: ResourceConflict[] = [
-  { resource: 'Alex Chen', role: 'Senior Designer', campaign1: 'Brand Awareness Q1', campaign2: 'Product Launch Blitz', overlapWeeks: 3, hoursConflict: 18, severity: 'high', resolution: 'Stagger campaign start dates by 2 weeks' },
-  { resource: 'Maria Lopez', role: 'Copywriter', campaign1: 'Email Nurture Series', campaign2: 'SEO Content Push', overlapWeeks: 6, hoursConflict: 24, severity: 'high', resolution: 'Hire freelance writer for SEO content' },
-  { resource: 'James Wu', role: 'Media Buyer', campaign1: 'Retargeting Display', campaign2: 'Brand Awareness Q1', overlapWeeks: 2, hoursConflict: 8, severity: 'medium', resolution: 'Consolidate ad platform management' },
-  { resource: 'Sara Kim', role: 'Analyst', campaign1: 'Influencer Campaign', campaign2: 'Product Launch Blitz', overlapWeeks: 4, hoursConflict: 12, severity: 'medium', resolution: 'Automate reporting for influencer metrics' },
-  { resource: 'Tom Reeves', role: 'Dev / Tracking', campaign1: 'Email Nurture Series', campaign2: 'Retargeting Display', overlapWeeks: 1, hoursConflict: 4, severity: 'low', resolution: 'Use shared tag manager setup' },
-];
+const RESOURCE_CONFLICTS: ResourceConflict[] = [];
 
 // overallocation bar data
-const OVERALLOC_DATA = [
-  { resource: 'Alex Chen', allocated: 52, capacity: 40 },
-  { resource: 'Maria Lopez', allocated: 58, capacity: 40 },
-  { resource: 'James Wu', allocated: 46, capacity: 40 },
-  { resource: 'Sara Kim', allocated: 44, capacity: 40 },
-  { resource: 'Tom Reeves', allocated: 38, capacity: 40 },
-];
+const OVERALLOC_DATA: { day: string; allocated: number; capacity: number }[] = [];
 
 // ─── Performance Matrix Radar Data ───────────────────────────────────────────
-const PERF_RADAR = [
-  { metric: 'ROAS', 'Paid Social': 86, 'Email': 98, 'SEO': 90, 'Display': 60, 'Influencer': 50 },
-  { metric: 'Lead Quality', 'Paid Social': 72, 'Email': 88, 'SEO': 82, 'Display': 55, 'Influencer': 65 },
-  { metric: 'Cost Efficiency', 'Paid Social': 68, 'Email': 95, 'SEO': 85, 'Display': 52, 'Influencer': 42 },
-  { metric: 'Conversion Rate', 'Paid Social': 74, 'Email': 85, 'SEO': 78, 'Display': 48, 'Influencer': 58 },
-  { metric: 'Brand Lift', 'Paid Social': 88, 'Email': 55, 'SEO': 62, 'Display': 70, 'Influencer': 82 },
-  { metric: 'Scalability', 'Paid Social': 80, 'Email': 72, 'SEO': 68, 'Display': 76, 'Influencer': 44 },
-];
+const PERF_RADAR: Record<string, number | string>[] = [];
 
-const REALLOC_SUGGESTIONS = [
-  { from: 'Influencer', to: 'Email', amount: 8, rationale: 'Email delivers 6× higher ROAS at 90% lower CPL' },
-  { from: 'Display', to: 'SEO', amount: 4, rationale: 'SEO compounds over time; display CTR declining 12% QoQ' },
-  { from: 'Paid Social', to: 'Email', amount: 5, rationale: 'Email nurture converts 87% of paid social leads at zero extra spend' },
-];
+const REALLOC_SUGGESTIONS: Record<string, string | number>[] = [];
 import { BulkOperationsBar, BulkSelectCheckbox } from '@/app/components/common/BulkOperations';
 import { TemplateManager } from '@/app/components/common/TemplateManager';
 import { EmptyState, ErrorState, LoadingSkeleton } from '@/app/components/common/EmptyErrorStates';
@@ -267,66 +238,16 @@ interface Client {
 }
 
 // Mock Clients from Client Master
-const mockClients: Client[] = [
-  { id: '1', name: 'TechCorp Solutions', industry: 'Technology', totalRevenue: 2500000, activeProjects: 8 },
-  { id: '2', name: 'Innovation Labs', industry: 'Software', totalRevenue: 1800000, activeProjects: 5 },
-  { id: '3', name: 'GlobalRetail Partners', industry: 'Retail', totalRevenue: 3200000, activeProjects: 12 },
-  { id: '4', name: 'HealthPlus Medical', industry: 'Healthcare', totalRevenue: 1500000, activeProjects: 4 },
-  { id: '5', name: 'EduTech International', industry: 'Education', totalRevenue: 980000, activeProjects: 3 },
-];
+const mockClients: Client[] = [];
 
 // Mock Resource Pools
-const mockResourcePools = [
-  { id: '1', name: 'Marketing Team', size: 12 },
-  { id: '2', name: 'Creative Studio', size: 8 },
-  { id: '3', name: 'Digital Specialists', size: 15 },
-  { id: '4', name: 'Content Creators', size: 10 },
-];
+const mockResourcePools: Record<string, string | number>[] = [];
 
 // Mock Users for Campaign Manager
-const mockManagers = [
-  { id: '1', name: 'Sarah Johnson' },
-  { id: '2', name: 'Michael Chen' },
-  { id: '3', name: 'Emma Davis' },
-  { id: '4', name: 'David Park' },
-  { id: '5', name: 'Lisa Anderson' },
-];
+const mockManagers: { id: string; name: string; email: string }[] = [];
 
 // Mock PPM Projects for Mapping (supports any PPM tool: Workfront, Jira, Monday, Asana, etc.)
-const mockPPMProjects = [
-  { 
-    id: 'WF-001', 
-    name: 'Q1 Marketing Campaign', 
-    client: 'TechCorp Solutions',
-    status: 'In Progress',
-    tasks: [
-      { id: 'T-001', name: 'Social Media Strategy', owner: 'Sarah Johnson', status: 'In Progress' },
-      { id: 'T-002', name: 'Content Creation', owner: 'Mike Chen', status: 'Not Started' },
-      { id: 'T-003', name: 'Paid Advertising', owner: 'Emma Davis', status: 'Complete' },
-    ]
-  },
-  { 
-    id: 'WF-002', 
-    name: 'Brand Redesign Project', 
-    client: 'Innovation Labs',
-    status: 'Planning',
-    tasks: [
-      { id: 'T-004', name: 'Brand Discovery', owner: 'Alex Rodriguez', status: 'In Progress' },
-      { id: 'T-005', name: 'Logo Design', owner: 'Lisa Park', status: 'Not Started' },
-    ]
-  },
-  { 
-    id: 'WF-003', 
-    name: 'Product Launch Campaign', 
-    client: 'GlobalRetail Partners',
-    status: 'In Progress',
-    tasks: [
-      { id: 'T-006', name: 'Market Research', owner: 'David Park', status: 'Complete' },
-      { id: 'T-007', name: 'Campaign Strategy', owner: 'Sarah Johnson', status: 'In Progress' },
-      { id: 'T-008', name: 'Creative Production', owner: 'Emma Davis', status: 'Not Started' },
-    ]
-  },
-];
+const mockPPMProjects: { id: string; name: string; client: string; tasks?: { id: string; name: string }[] }[] = [];
 
 const campaignTemplates: CampaignTemplate[] = [
   {
@@ -493,80 +414,24 @@ const campaignTemplates: CampaignTemplate[] = [
   },
 ];
 
-const mockCampaigns: Campaign[] = [
-  {
-    id: '1',
-    name: 'Spring Brand Refresh',
-    type: 'Social Media Campaign',
-    client: 'TechCorp Solutions',
-    clientId: '1',
-    status: 'active',
-    currentPhase: 'Production',
-    progress: 65,
-    startDate: '2026-01-15',
-    endDate: '2026-03-15',
-    budget: 45000,
-    spent: 28500,
-    burnRate: 750,
-    healthScore: 88,
-    fromTemplate: true,
-    templateId: '1',
-    manager: 'Sarah Johnson',
-    team: [
-      { id: '1', name: 'Sarah Johnson', role: 'Social Media Manager', matchScore: 95, hourlyRate: 95, allocatedHours: 120, avatar: 'SJ' },
-      { id: '2', name: 'Mike Chen', role: 'Copywriter', matchScore: 89, hourlyRate: 85, allocatedHours: 80, avatar: 'MC' },
-      { id: '3', name: 'Emma Davis', role: 'Graphic Designer', matchScore: 92, hourlyRate: 90, allocatedHours: 100, avatar: 'ED' },
-    ],
-  },
-  {
-    id: '2',
-    name: 'Content Hub Launch',
-    type: 'Content Marketing',
-    client: 'Innovation Labs',
-    clientId: '2',
-    status: 'active',
-    currentPhase: 'Creative',
-    progress: 45,
-    startDate: '2026-02-01',
-    endDate: '2026-04-30',
-    budget: 65000,
-    spent: 18200,
-    burnRate: 650,
-    healthScore: 92,
-    fromTemplate: true,
-    templateId: '2',
-    manager: 'Michael Chen',
-    team: [
-      { id: '4', name: 'Alex Rodriguez', role: 'Content Strategist', matchScore: 88, hourlyRate: 105, allocatedHours: 140, avatar: 'AR' },
-      { id: '5', name: 'Lisa Park', role: 'Writer', matchScore: 91, hourlyRate: 80, allocatedHours: 160, avatar: 'LP' },
-    ],
-  },
-  {
-    id: '3',
-    name: 'Q1 Newsletter Series',
-    type: 'Custom Campaign',
-    client: 'HealthPlus Medical',
-    clientId: '4',
-    status: 'planning',
-    currentPhase: 'Planning',
-    progress: 15,
-    startDate: '2026-03-01',
-    endDate: '2026-05-31',
-    budget: 25000,
-    spent: 0,
-    burnRate: 0,
-    healthScore: 75,
-    fromTemplate: false,
-    manager: 'Emma Davis',
-    team: [],
-  },
-];
+const mockCampaigns: Campaign[] = [];
 
 export function CampaignMapper() {
   // P0 FIX #10: RBAC Integration
   const { hasPermission, currentUser, isAdmin } = useRBAC();
   
-  const [campaigns, setCampaigns] = useState<Campaign[]>(mockCampaigns);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+
+  // Campaign documents are stored in the generic /insights table as
+  // type='campaign'. Each insight's `data` field carries the campaign shape.
+  useEffect(() => {
+    api.get<{ _id: string; title: string; data: Record<string, unknown> }[]>('/insights?type=campaign')
+      .then((rows) => {
+        const list = Array.isArray(rows) ? rows : []
+        setCampaigns(list.map((r) => ({ id: r._id, name: r.title, ...(r.data as object) } as unknown as Campaign)))
+      })
+      .catch(() => {/* keep empty */})
+  }, []);
   const [selectedTemplate, setSelectedTemplate] = useState<CampaignTemplate | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showTemplateLibrary, setShowTemplateLibrary] = useState(false);
@@ -2229,8 +2094,8 @@ export function CampaignMapper() {
                     </SelectTrigger>
                     <SelectContent>
                       {mockResourcePools.map((pool) => (
-                        <SelectItem key={pool.id} value={pool.id}>
-                          {pool.name} ({pool.size} members)
+                        <SelectItem key={String(pool.id)} value={String(pool.id)}>
+                          {String(pool.name ?? '')} ({String(pool.size ?? 0)} members)
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -2999,7 +2864,7 @@ export function CampaignMapper() {
                     <div className="text-sm text-gray-600">Client: {project.client}</div>
                     {selectedPPMProject === project.id && (
                       <div className="mt-4 space-y-2">
-                        {project.tasks.map((task) => (
+                        {(project.tasks ?? []).map((task) => (
                           <div key={task.id} className="flex items-center gap-2 p-2 bg-white rounded border">
                             <input type="checkbox" checked={mappedTasks.includes(task.id)} onChange={(e) => {
                               if (e.target.checked) setMappedTasks([...mappedTasks, task.id]);

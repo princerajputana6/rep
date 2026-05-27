@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -71,77 +72,9 @@ interface Suggestion {
   actions: string[];
 }
 
-const mockWorkflows: Workflow[] = [
-  {
-    id: '1',
-    name: 'Auto-Approve Low-Risk Requests',
-    description: 'Automatically approve resource requests under 20 hours with available capacity',
-    trigger: 'New borrow request received',
-    actions: ['Check capacity', 'Verify cost threshold', 'Auto-approve', 'Notify stakeholders'],
-    status: 'active',
-    lastRun: '2 hours ago',
-    runs: 247,
-  },
-  {
-    id: '2',
-    name: 'Capacity Alert System',
-    description: 'Send alerts when team utilization exceeds 85%',
-    trigger: 'Utilization threshold reached',
-    actions: ['Calculate utilization', 'Identify bottlenecks', 'Send alert', 'Suggest reallocation'],
-    status: 'active',
-    lastRun: '5 minutes ago',
-    runs: 89,
-  },
-  {
-    id: '3',
-    name: 'Weekly Resource Report',
-    description: 'Generate and distribute weekly resource allocation reports',
-    trigger: 'Every Monday 9:00 AM',
-    actions: ['Compile data', 'Generate report', 'Email to managers'],
-    status: 'active',
-    lastRun: 'Yesterday',
-    runs: 52,
-  },
-];
+const mockWorkflows: Workflow[] = [];
 
-const mockSuggestions: Suggestion[] = [
-  {
-    id: '1',
-    type: 'optimization',
-    title: 'Optimize Frontend Team Allocation',
-    description: 'Rebalancing 3 developers could increase overall utilization by 12% and save $15K/month',
-    impact: 'high',
-    confidence: 94,
-    actions: ['View Details', 'Apply Suggestion', 'Dismiss'],
-  },
-  {
-    id: '2',
-    type: 'risk',
-    title: 'DevOps Capacity Risk Detected',
-    description: 'Current trajectory shows 95% utilization by end of Q2. Consider hiring or borrowing resources.',
-    impact: 'high',
-    confidence: 88,
-    actions: ['View Forecast', 'Plan Hiring', 'Find Resources'],
-  },
-  {
-    id: '3',
-    type: 'opportunity',
-    title: 'Cross-Training Opportunity',
-    description: '4 developers have slack time that could be used for upskilling in React 19',
-    impact: 'medium',
-    confidence: 82,
-    actions: ['View Team', 'Create Training Plan'],
-  },
-  {
-    id: '4',
-    type: 'allocation',
-    title: 'Project Alpha Overstaffed',
-    description: 'Analysis shows Project Alpha could release 1 senior developer without impact',
-    impact: 'medium',
-    confidence: 76,
-    actions: ['Review Analysis', 'Reallocate Resource'],
-  },
-];
+const mockSuggestions: Suggestion[] = [];
 
 const quickCommands = [
   { command: 'Show me available developers', icon: Users },
@@ -168,8 +101,24 @@ export function AICoPilot() {
   ]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
-  const [workflows, setWorkflows] = useState<Workflow[]>(mockWorkflows);
-  const [suggestions] = useState<Suggestion[]>(mockSuggestions);
+  const [workflows, setWorkflows] = useState<Workflow[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+
+  // Both workflows and suggestions are pulled from the generic /insights
+  // store. Each insight's `data` blob is merged into the local shape.
+  useEffect(() => {
+    Promise.all([
+      api.get<{ _id: string; title: string; data: Record<string, unknown> }[]>('/insights?type=copilot-workflow').catch(() => []),
+      api.get<{ _id: string; title: string; data: Record<string, unknown> }[]>('/insights?type=copilot-suggestion').catch(() => []),
+    ]).then(([wfs, sugs]) => {
+      setWorkflows((Array.isArray(wfs) ? wfs : []).map((w) => ({
+        id: w._id, name: w.title, ...(w.data as object),
+      } as unknown as Workflow)))
+      setSuggestions((Array.isArray(sugs) ? sugs : []).map((s) => ({
+        id: s._id, title: s.title, ...(s.data as object),
+      } as unknown as Suggestion)))
+    })
+  }, []);
 
   const handleSendMessage = async (message?: string) => {
     const messageText = message || input;

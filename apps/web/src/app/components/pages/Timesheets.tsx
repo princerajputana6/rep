@@ -3,7 +3,8 @@
  * overtime detection, lock periods, and manager approval workflow.
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
@@ -185,7 +186,30 @@ function WeekNavigator({ weekKey, onWeekChange, isLocked, weekStatus, onSubmit }
 
 // ─── My Timesheets Tab ────────────────────────────────────────────────────────
 function MyTimesheetsTab({ weekKey, onWeekChange }: { weekKey: string; onWeekChange: (k: string) => void }) {
-  const [entries, setEntries] = useState<TimesheetEntry[]>(INIT_ENTRIES);
+  const [entries, setEntries] = useState<TimesheetEntry[]>([]);
+
+  // Pull saved timesheets from the API on mount.
+  useEffect(() => {
+    api.get<Record<string, unknown>[]>('/timesheets')
+      .then((rows) => {
+        const list = Array.isArray(rows) ? rows : []
+        const mapped: TimesheetEntry[] = list.map((r) => ({
+          id: String(r._id ?? ''),
+          projectId: String(r.projectId ?? 'unknown'),
+          projectName: String(r.projectName ?? 'Untitled Project'),
+          taskName: String(r.taskName ?? '—'),
+          billingCode: String(r.billingCode ?? BILLING_CODES[0]),
+          hours: (r.hours as Record<string, number>) ?? {},
+          weekKey: String(r.weekKey ?? CURR_WEEK),
+          status: (r.status as TimesheetStatus) ?? 'draft',
+          isLocked: Boolean(r.isLocked),
+          rejectedReason: r.rejectedReason ? String(r.rejectedReason) : undefined,
+        }))
+        setEntries(mapped)
+      })
+      .catch(() => {/* keep empty */})
+  }, []);
+
   const [showAddRow, setShowAddRow] = useState(false);
   const [newRow, setNewRow] = useState({ projectName: '', taskName: '', billingCode: BILLING_CODES[0] });
   const [rejectReason, setRejectReason] = useState('');

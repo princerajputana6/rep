@@ -429,31 +429,27 @@ export function ProgramManagement() {
     setLoading(true);
     setError(null);
     programsApi.list().then(result => {
-      if (result.data && result.data.length > 0) {
-        const mapped: Program[] = result.data.map(p => ({
-          id: p.id,
-          name: p.name,
-          description: p.description ?? '',
-          owner: p.owner,
-          portfolioId: p.portfolioId ?? '',
-          portfolioName: (p as any).portfolio?.name ?? 'Unassigned',
-          status: (p.status as Program['status']) ?? 'planning',
-          totalBudget: p.budget ?? 0,
-          totalSpent: p.spent ?? 0,
-          startDate: p.startDate ?? '',
-          endDate: p.endDate ?? '',
-          objective: '',
-          projects: [],
-        }));
-        setPrograms(mapped);
-      } else {
-        // Fallback to rich dummy data when API returns empty
-        setPrograms(DUMMY_PROGRAMS);
-      }
-    }).catch(() => {
-      // Use dummy data on API error so page is always useful
-      setPrograms(DUMMY_PROGRAMS);
-      setError(null);
+      const rows = result.data ?? []
+      const mapped: Program[] = rows.map(p => ({
+        id: p.id,
+        name: p.name,
+        description: p.description ?? '',
+        owner: p.owner,
+        portfolioId: p.portfolioId ?? '',
+        portfolioName: (p as any).portfolio?.name ?? 'Unassigned',
+        status: (p.status as Program['status']) ?? 'planning',
+        totalBudget: p.budget ?? 0,
+        totalSpent: p.spent ?? 0,
+        startDate: p.startDate ?? '',
+        endDate: p.endDate ?? '',
+        objective: '',
+        projects: [],
+      }));
+      setPrograms(mapped);
+    }).catch((e: Error) => {
+      // No silent dummy fallback — surface the real failure.
+      setError(e.message ?? 'Failed to load programs')
+      setPrograms([])
     }).finally(() => {
       setLoading(false);
     });

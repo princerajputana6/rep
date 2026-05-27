@@ -1,312 +1,195 @@
-import { useState } from 'react';
+'use client'
+
+import { useEffect, useState } from 'react'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/app/components/ui/dialog';
-import { Button } from '@/app/components/ui/button';
-import { Input } from '@/app/components/ui/input';
-import { Label } from '@/app/components/ui/label';
-import { Textarea } from '@/app/components/ui/textarea';
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/app/components/ui/dialog'
+import { Button } from '@/app/components/ui/button'
+import { Input } from '@/app/components/ui/input'
+import { Label } from '@/app/components/ui/label'
+import { Textarea } from '@/app/components/ui/textarea'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/ui/select';
-import { Badge } from '@/app/components/ui/badge';
-import { X, AlertCircle } from 'lucide-react';
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/app/components/ui/select'
+import { Badge } from '@/app/components/ui/badge'
+import { AlertCircle, Loader2, X } from 'lucide-react'
+import { toast } from 'sonner'
+import { api } from '@/lib/api'
+import { networkService, type Agency, type RateCardRow, type JobRoleRow } from '@/app/services/networkService'
 
 interface CreateTieUpDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
 export function CreateTieUpDialog({ open, onOpenChange }: CreateTieUpDialogProps) {
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
-  const [selectedRateCards, setSelectedRateCards] = useState<string[]>([]);
+  // Form state
+  const [code, setCode] = useState('')
+  const [fromAgencyId, setFromAgencyId] = useState('')
+  const [toAgencyId, setToAgencyId] = useState('')
+  const [notes, setNotes] = useState('')
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([])
+  const [rateCardId, setRateCardId] = useState('')
+  const [validFrom, setValidFrom] = useState('')
+  const [validTo, setValidTo] = useState('')
+  const [totalValue, setTotalValue] = useState('')
 
-  const availableRoles = [
-    'Senior Developer',
-    'UX Designer',
-    'Product Manager',
-    'Data Analyst',
-    'QA Engineer',
-    'DevOps Engineer',
-    'Scrum Master',
-    'Business Analyst',
-    'Technical Architect',
-    'Frontend Developer'
-  ];
+  // Loaded options
+  const [agencies, setAgencies] = useState<Agency[]>([])
+  const [rateCards, setRateCards] = useState<RateCardRow[]>([])
+  const [jobRoles, setJobRoles] = useState<JobRoleRow[]>([])
+  const [saving, setSaving] = useState(false)
 
-  const availableRateCards = [
-    { id: 'RC-001', name: 'Senior Level - US ($150/hr)' },
-    { id: 'RC-002', name: 'Mid Level - US ($100/hr)' },
-    { id: 'RC-003', name: 'Junior Level - US ($70/hr)' },
-    { id: 'RC-004', name: 'Senior Level - EU (€120/hr)' },
-    { id: 'RC-005', name: 'Mid Level - EU (€85/hr)' }
-  ];
+  useEffect(() => {
+    if (!open) return
+    setCode(`TU-${Date.now().toString(36).toUpperCase().slice(-6)}`)
+    Promise.all([
+      networkService.listAgencies(),
+      api.get<RateCardRow[]>('/rate-cards').catch(() => []),
+      api.get<JobRoleRow[]>('/job-roles').catch(() => []),
+    ]).then(([ag, rc, jr]) => {
+      setAgencies(Array.isArray(ag) ? ag : [])
+      setRateCards(Array.isArray(rc) ? rc : [])
+      setJobRoles(Array.isArray(jr) ? jr : [])
+    })
+  }, [open])
 
-  const agencies = [
-    'Acme Digital',
-    'CreativeCo',
-    'TechVentures',
-    'Digital Wave',
-    'Innovation Labs',
-    'NextGen Studios'
-  ];
+  const reset = () => {
+    setCode(''); setFromAgencyId(''); setToAgencyId(''); setNotes('')
+    setSelectedRoles([]); setRateCardId(''); setValidFrom(''); setValidTo(''); setTotalValue('')
+  }
 
-  const toggleRole = (role: string) => {
-    if (selectedRoles.includes(role)) {
-      setSelectedRoles(selectedRoles.filter(r => r !== role));
-    } else {
-      setSelectedRoles([...selectedRoles, role]);
+  const toggleRole = (r: string) => {
+    setSelectedRoles((prev) => prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r])
+  }
+
+  const handleSubmit = async () => {
+    if (!code.trim()) { toast.error('Code is required'); return }
+    if (!fromAgencyId || !toAgencyId) { toast.error('Pick both agencies'); return }
+    if (fromAgencyId === toAgencyId) { toast.error('From and To must be different agencies'); return }
+    if (selectedRoles.length === 0) { toast.error('Pick at least one permitted role'); return }
+
+    setSaving(true)
+    try {
+      await api.post('/tie-ups', {
+        code: code.trim(),
+        fromAgencyId,
+        toAgencyId,
+        permittedRoles: selectedRoles,
+        rateCardId: rateCardId || undefined,
+        validFrom: validFrom || undefined,
+        validTo: validTo || undefined,
+        totalValue: Number(totalValue) || 0,
+        notes: notes || undefined,
+        status: 'ACTIVE',
+      })
+      toast.success(`Tie-up ${code} created.`)
+      reset()
+      onOpenChange(false)
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to create tie-up')
+    } finally {
+      setSaving(false)
     }
-  };
+  }
 
-  const toggleRateCard = (rateCardId: string) => {
-    if (selectedRateCards.includes(rateCardId)) {
-      setSelectedRateCards(selectedRateCards.filter(r => r !== rateCardId));
-    } else {
-      setSelectedRateCards([...selectedRateCards, rateCardId]);
-    }
-  };
-
-  const handleSubmit = () => {
-    console.log('Creating tie-up with roles:', selectedRoles);
-    console.log('Rate cards:', selectedRateCards);
-    onOpenChange(false);
-  };
+  // Use existing JobRoles if any; otherwise fall back to a small static list of common roles
+  const roleOptions = jobRoles.length > 0
+    ? jobRoles.map((r) => r.name)
+    : ['Senior Developer', 'UX Designer', 'Product Manager', 'Data Analyst', 'QA Engineer', 'DevOps Engineer']
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) reset(); onOpenChange(o) }}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Tie-Up Agreement</DialogTitle>
-          <DialogDescription>
-            Establish a resource sharing agreement between two agencies
-          </DialogDescription>
+          <DialogDescription>Establish a resource sharing agreement between two agencies</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          {/* Agreement Parties */}
           <div className="space-y-4">
             <h3 className="font-semibold text-gray-900 border-b pb-2">Agreement Parties</h3>
-            
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="fromAgency">From Agency (Provider) *</Label>
-                <Select>
-                  <SelectTrigger id="fromAgency">
-                    <SelectValue placeholder="Select provider agency" />
-                  </SelectTrigger>
+                <Select value={fromAgencyId} onValueChange={setFromAgencyId}>
+                  <SelectTrigger id="fromAgency"><SelectValue placeholder="Select provider agency" /></SelectTrigger>
                   <SelectContent>
-                    {agencies.map((agency) => (
-                      <SelectItem key={agency} value={agency}>{agency}</SelectItem>
-                    ))}
+                    {agencies.map((a) => <SelectItem key={a._id} value={a._id}>{a.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="toAgency">To Agency (Receiver) *</Label>
-                <Select>
-                  <SelectTrigger id="toAgency">
-                    <SelectValue placeholder="Select receiver agency" />
-                  </SelectTrigger>
+                <Select value={toAgencyId} onValueChange={setToAgencyId}>
+                  <SelectTrigger id="toAgency"><SelectValue placeholder="Select receiver agency" /></SelectTrigger>
                   <SelectContent>
-                    {agencies.map((agency) => (
-                      <SelectItem key={agency} value={agency}>{agency}</SelectItem>
-                    ))}
+                    {agencies.map((a) => <SelectItem key={a._id} value={a._id}>{a.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="tieUpName">Tie-Up Name</Label>
-              <Input id="tieUpName" placeholder="e.g., Acme-Creative Partnership Q1 2024" />
+              <Label htmlFor="code">Tie-Up Code *</Label>
+              <Input id="code" placeholder="e.g., TU-001" value={code} onChange={(e) => setCode(e.target.value)} />
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="description">Agreement Description</Label>
-              <Textarea 
-                id="description" 
-                placeholder="Brief description of the tie-up purpose and scope..."
-                rows={3}
-              />
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea id="notes" placeholder="Purpose and scope..." rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
           </div>
 
-          {/* Permitted Roles */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-gray-900 border-b pb-2">Permitted Roles</h3>
-            
-            <div className="space-y-2">
-              <Label>Select Roles Allowed in This Tie-Up *</Label>
-              <div className="flex flex-wrap gap-2 p-4 border rounded-lg bg-gray-50 min-h-[120px]">
-                {availableRoles.map((role) => (
-                  <Badge
-                    key={role}
-                    variant={selectedRoles.includes(role) ? "default" : "outline"}
-                    className="cursor-pointer hover:bg-blue-100"
-                    onClick={() => toggleRole(role)}
-                  >
-                    {role}
-                    {selectedRoles.includes(role) && (
-                      <X className="w-3 h-3 ml-1" />
-                    )}
-                  </Badge>
-                ))}
-              </div>
-              <p className="text-sm text-gray-500">
-                {selectedRoles.length > 0 
-                  ? `${selectedRoles.length} role(s) selected`
-                  : 'Please select at least one role'}
-              </p>
+            <h3 className="font-semibold text-gray-900 border-b pb-2">Permitted Roles *</h3>
+            <div className="flex flex-wrap gap-2 p-4 border rounded-lg bg-gray-50 min-h-[80px]">
+              {roleOptions.map((r) => (
+                <Badge key={r} variant={selectedRoles.includes(r) ? 'default' : 'outline'} className="cursor-pointer hover:bg-blue-100" onClick={() => toggleRole(r)}>
+                  {r}{selectedRoles.includes(r) && <X className="w-3 h-3 ml-1" />}
+                </Badge>
+              ))}
             </div>
+            <p className="text-sm text-gray-500">
+              {selectedRoles.length > 0 ? `${selectedRoles.length} role(s) selected` : 'Pick at least one role'}
+              {jobRoles.length === 0 && ' · Showing default options because no job roles exist yet.'}
+            </p>
           </div>
 
-          {/* Rate Cards */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-gray-900 border-b pb-2">Rate Cards</h3>
-            
-            <div className="space-y-2">
-              <Label>Applicable Rate Cards *</Label>
-              <div className="space-y-2 p-4 border rounded-lg bg-gray-50">
-                {availableRateCards.map((rateCard) => (
-                  <div
-                    key={rateCard.id}
-                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                      selectedRateCards.includes(rateCard.id)
-                        ? 'bg-blue-50 border-blue-300'
-                        : 'bg-white border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => toggleRateCard(rateCard.id)}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                          selectedRateCards.includes(rateCard.id)
-                            ? 'bg-blue-600 border-blue-600'
-                            : 'border-gray-300'
-                        }`}>
-                          {selectedRateCards.includes(rateCard.id) && (
-                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 12 12">
-                              <path d="M10 3L4.5 8.5L2 6" stroke="currentColor" strokeWidth="2" fill="none" />
-                            </svg>
-                          )}
-                        </div>
-                        <div>
-                          <div className="font-medium text-gray-900">{rateCard.id}</div>
-                          <div className="text-sm text-gray-600">{rateCard.name}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <p className="text-sm text-gray-500">
-                {selectedRateCards.length > 0 
-                  ? `${selectedRateCards.length} rate card(s) selected`
-                  : 'Please select at least one rate card'}
-              </p>
-            </div>
-          </div>
-
-          {/* Validity Period */}
-          <div className="space-y-4">
-            <h3 className="font-semibold text-gray-900 border-b pb-2">Validity Period</h3>
-            
+            <h3 className="font-semibold text-gray-900 border-b pb-2">Validity &amp; Commercial</h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="validFrom">Valid From *</Label>
-                <Input id="validFrom" type="date" />
+                <Label htmlFor="validFrom">Valid From</Label>
+                <Input id="validFrom" type="date" value={validFrom} onChange={(e) => setValidFrom(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="validTo">Valid To *</Label>
-                <Input id="validTo" type="date" />
+                <Label htmlFor="validTo">Valid To</Label>
+                <Input id="validTo" type="date" value={validTo} onChange={(e) => setValidTo(e.target.value)} />
               </div>
             </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="autoRenew">Auto-Renewal</Label>
-                <Select>
-                  <SelectTrigger id="autoRenew">
-                    <SelectValue placeholder="Select option" />
-                  </SelectTrigger>
+                <Label htmlFor="rateCard">Rate Card</Label>
+                <Select value={rateCardId} onValueChange={setRateCardId}>
+                  <SelectTrigger id="rateCard"><SelectValue placeholder={rateCards.length === 0 ? 'No rate cards yet' : 'Select rate card'} /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="no">No auto-renewal</SelectItem>
-                    <SelectItem value="3months">Auto-renew for 3 months</SelectItem>
-                    <SelectItem value="6months">Auto-renew for 6 months</SelectItem>
-                    <SelectItem value="1year">Auto-renew for 1 year</SelectItem>
+                    {rateCards.map((rc) => <SelectItem key={rc._id} value={rc._id}>{rc.name} ({rc.currency})</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="notifyBefore">Expiry Notification (days before)</Label>
-                <Input id="notifyBefore" type="number" placeholder="30" defaultValue="30" />
+                <Label htmlFor="totalValue">Total Contract Value</Label>
+                <Input id="totalValue" type="number" placeholder="0" value={totalValue} onChange={(e) => setTotalValue(e.target.value)} />
               </div>
             </div>
           </div>
 
-          {/* Commercial Terms */}
-          <div className="space-y-4">
-            <h3 className="font-semibold text-gray-900 border-b pb-2">Commercial Terms</h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="currency">Currency *</Label>
-                <Select>
-                  <SelectTrigger id="currency">
-                    <SelectValue placeholder="Select currency" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="usd">USD - US Dollar</SelectItem>
-                    <SelectItem value="eur">EUR - Euro</SelectItem>
-                    <SelectItem value="gbp">GBP - British Pound</SelectItem>
-                    <SelectItem value="aud">AUD - Australian Dollar</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="paymentTerms">Payment Terms</Label>
-                <Select>
-                  <SelectTrigger id="paymentTerms">
-                    <SelectValue placeholder="Select terms" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="net15">Net 15 days</SelectItem>
-                    <SelectItem value="net30">Net 30 days</SelectItem>
-                    <SelectItem value="net45">Net 45 days</SelectItem>
-                    <SelectItem value="net60">Net 60 days</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="maxAllocation">Maximum Concurrent Allocations</Label>
-              <Input id="maxAllocation" type="number" placeholder="e.g., 10" />
-              <p className="text-sm text-gray-500">
-                Optional: Limit the number of resources that can be allocated simultaneously
-              </p>
-            </div>
-          </div>
-
-          {/* Alert */}
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div className="flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm">
-                <div className="font-medium text-blue-900">Contract Validation</div>
+                <div className="font-medium text-blue-900">Tip</div>
                 <div className="text-blue-700 mt-1">
-                  This tie-up will be automatically validated against agency participation levels and existing contracts. 
-                  Resources will only be visible after both parties confirm the agreement.
+                  Create at least two agencies and a rate card first if you want the full contract flow populated.
                 </div>
               </div>
             </div>
@@ -314,14 +197,13 @@ export function CreateTieUpDialog({ open, onOpenChange }: CreateTieUpDialogProps
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={selectedRoles.length === 0 || selectedRateCards.length === 0}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancel</Button>
+          <Button onClick={handleSubmit} disabled={saving || selectedRoles.length === 0}>
+            {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
             Create Tie-Up
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

@@ -18,7 +18,30 @@
       "Bash(lsof -iTCP:3001 -sTCP:LISTEN -n -P)",
       "Bash(grep -qE \"Ready|started server|Local:\" /tmp/rep-dev.log)",
       "Read(//private/tmp/**)",
-      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -X POST http://localhost:3001/api/v1/integrations/workfront/connectors -H 'Content-Type: application/json' -d '{}')"
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -X POST http://localhost:3001/api/v1/integrations/workfront/connectors -H 'Content-Type: application/json' -d '{}')",
+      "Bash(kill %1)",
+      "Bash(node -e ' *)",
+      "Bash(xargs -I{} basename {} .tsx)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" -X GET http://localhost:3001/api/v1/agencies/123/summary)",
+      "Bash(jobs -l)",
+      "Bash(awk '/^const PROJECTS_DATA: ProjectRow\\\\[\\\\] = \\\\[/{flag=1;print \"const PROJECTS_DATA: ProjectRow[] = [];\";next} flag && /^\\\\];$/{flag=0;next} !flag{print}' apps/web/src/app/components/pages/KPIDetails.tsx)",
+      "Bash(awk '/^const TASKS_DATA: TaskRow\\\\[\\\\] = \\\\[/{flag=1;print \"const TASKS_DATA: TaskRow[] = [];\";next} flag && /^\\\\];$/{flag=0;next} !flag{print}' /tmp/kpi1.tsx)",
+      "Bash(awk '/^const ASSIGNMENTS_DATA: AssignmentRow\\\\[\\\\] = \\\\[/{flag=1;print \"const ASSIGNMENTS_DATA: AssignmentRow[] = [];\";next} flag && /^\\\\];$/{flag=0;next} !flag{print}' /tmp/kpi2.tsx)",
+      "Bash(awk ' *)",
+      "Bash(mv /tmp/aa.tsx apps/web/src/app/components/pages/AdvancedAnalytics.tsx)",
+      "Bash(mv /tmp/fd.tsx apps/web/src/app/components/pages/FinancialDashboard.tsx)",
+      "Bash(mv /tmp/cp.tsx apps/web/src/app/components/pages/ClientProfitability.tsx)",
+      "Bash(mv /tmp/rp.tsx apps/web/src/app/components/pages/ResourcePools.tsx)",
+      "Bash(mv /tmp/pp.tsx apps/web/src/app/components/pages/PredictivePlanning.tsx)",
+      "Bash(mv /tmp/ai.tsx apps/web/src/app/components/pages/AICoPilot.tsx)",
+      "Bash(mv /tmp/ai2.tsx apps/web/src/app/components/pages/AIResourceMatching.tsx)",
+      "Bash(mv /tmp/g.tsx apps/web/src/app/components/pages/Gamification.tsx)",
+      "Bash(mv /tmp/cm.tsx apps/web/src/app/components/pages/CampaignMapper.tsx)",
+      "Bash(grep -nE \"\\\\\\\\\\\\$20\\\\.30|20\\\\.30M|\\\\\\\\\\\\$9\\\\.80|1135|Digital Transformation|Brand & Marketing\" apps/web/src/app/components/pages/Portfolio.tsx)",
+      "Bash(grep -nE \"Cloud Migration|Global Campaign|CRM Overhaul|\\\\\\\\\\\\$11\\\\.50\" apps/web/src/app/components/pages/Program.tsx)",
+      "Bash(mv /tmp/sp.tsx apps/web/src/app/components/pages/StaffingPlanner.tsx)",
+      "Bash(mv /tmp/al.tsx apps/web/src/app/components/pages/AuditLogs.tsx)",
+      "Bash(curl -s -o /dev/null -w \"Dev server: %{http_code}\\\\n\" http://localhost:3001/)"
     ]
   }
 }

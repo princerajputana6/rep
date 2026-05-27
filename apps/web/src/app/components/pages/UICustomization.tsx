@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -85,6 +86,21 @@ export function UICustomization() {
 
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
+  // Pull saved preferences from /user-preferences on mount. Defaults above
+  // stay in place if the user has never saved anything.
+  useEffect(() => {
+    api.get<{ branding?: Partial<BrandingSettings>; layout?: Partial<LayoutSettings>; widgets?: Partial<WidgetSettings> }>('/user-preferences')
+      .then((p) => {
+        if (p?.branding && Object.keys(p.branding).length) {
+          setBranding((prev) => ({ ...prev, ...p.branding }))
+          if (p.branding.companyLogo) setLogoPreview(p.branding.companyLogo)
+        }
+        if (p?.layout && Object.keys(p.layout).length) setLayout((prev) => ({ ...prev, ...p.layout }))
+        if (p?.widgets && Object.keys(p.widgets).length) setWidgets((prev) => ({ ...prev, ...p.widgets }))
+      })
+      .catch(() => {/* keep defaults */})
+  }, []);
+
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -98,19 +114,34 @@ export function UICustomization() {
     }
   };
 
-  const handleSaveBranding = () => {
-    localStorage.setItem('rep_branding', JSON.stringify(branding));
-    toast.success('Branding settings saved successfully!');
+  const handleSaveBranding = async () => {
+    try {
+      await api.patch('/user-preferences', { branding })
+      localStorage.setItem('rep_branding', JSON.stringify(branding))  // mirror for fast read
+      toast.success('Branding settings saved successfully!')
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save branding')
+    }
   };
 
-  const handleSaveLayout = () => {
-    localStorage.setItem('rep_layout', JSON.stringify(layout));
-    toast.success('Layout settings saved successfully!');
+  const handleSaveLayout = async () => {
+    try {
+      await api.patch('/user-preferences', { layout })
+      localStorage.setItem('rep_layout', JSON.stringify(layout))
+      toast.success('Layout settings saved successfully!')
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save layout')
+    }
   };
 
-  const handleSaveWidgets = () => {
-    localStorage.setItem('rep_widgets', JSON.stringify(widgets));
-    toast.success('Widget settings saved successfully!');
+  const handleSaveWidgets = async () => {
+    try {
+      await api.patch('/user-preferences', { widgets })
+      localStorage.setItem('rep_widgets', JSON.stringify(widgets))
+      toast.success('Widget settings saved successfully!')
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save widgets')
+    }
   };
 
   const handleResetBranding = () => {

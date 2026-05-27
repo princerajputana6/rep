@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -91,7 +92,23 @@ const mockArchivedItems: ArchivedItem[] = [
 ];
 
 export function RecycleBin() {
-  const [archivedItems, setArchivedItems] = useState<ArchivedItem[]>(mockArchivedItems);
+  const [archivedItems, setArchivedItems] = useState<ArchivedItem[]>([]);
+  useEffect(() => {
+    // Backend returns [] until soft-delete (deletedAt) is added to models.
+    api.get<Record<string, unknown>[]>('/recycle-bin')
+      .then((rows) => setArchivedItems((Array.isArray(rows) ? rows : []).map((r): ArchivedItem => ({
+        id: String(r._id ?? r.id ?? ''),
+        name: String(r.name ?? '—'),
+        type: (r.type as ArchivedItem['type']) ?? 'project',
+        archivedBy: String(r.archivedBy ?? '—'),
+        archivedDate: r.archivedDate ? String(r.archivedDate).slice(0, 10) : '',
+        reason: String(r.reason ?? ''),
+        status: (r.status as ArchivedItem['status']) ?? 'archived',
+        canRestore: Boolean(r.canRestore ?? true),
+        autoDeleteDate: r.autoDeleteDate ? String(r.autoDeleteDate).slice(0, 10) : undefined,
+      } as ArchivedItem))))
+      .catch(() => {/* keep empty */})
+  }, []);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
 

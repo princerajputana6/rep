@@ -3,7 +3,8 @@
  * Predictive budget intelligence, triage kanban, burn analytics, and alert rule configuration
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
@@ -417,8 +418,31 @@ function AlertCard({
 
 // ─── Main Component ─────────────────────────────────────────────────────────────
 export function BudgetAlerts() {
-  const [alerts, setAlerts] = useState<BudgetAlert[]>(ALERTS);
+  const [alerts, setAlerts] = useState<BudgetAlert[]>([]);
   const [rules, setRules] = useState<AlertRule[]>(DEFAULT_RULES);
+
+  // Pulls real budget alerts from /budget-alerts. Predictive fields
+  // (EAC, burn trend, spark data, remediations) default to safe values
+  // since the backend doesn't compute them yet.
+  useEffect(() => {
+    api.get<Record<string, unknown>[]>('/budget-alerts')
+      .then((rows) => setAlerts((Array.isArray(rows) ? rows : []).map((r): BudgetAlert => ({
+        id: String(r._id ?? ''),
+        projectId: String(r.scopeId ?? ''),
+        projectName: String(r.name ?? '—'),
+        clientName: '—',
+        budget: 0, spent: 0, remaining: 0,
+        utilizationPercent: Number(r.thresholdPct ?? 0),
+        burnRate: 0, daysRemaining: 0, projectedOverage: 0,
+        severity: (r.status === 'TRIGGERED' ? 'critical' : 'info'),
+        threshold: Number(r.thresholdPct ?? 80),
+        createdAt: r.createdAt ? String(r.createdAt).slice(0, 10) : '',
+        triageStatus: 'new',
+        eac: 0, etc: 0, budgetHealthScore: 100,
+        burnTrend: 'stable', sparkData: [], remediations: [],
+      }))))
+      .catch(() => {/* keep empty */})
+  }, []);
   const [severityFilter, setSeverityFilter] = useState<'all' | BudgetAlert['severity']>('all');
   const [triageFilter, setTriageFilter] = useState<'all' | BudgetAlert['triageStatus']>('all');
   const [showActioned, setShowActioned] = useState(false);

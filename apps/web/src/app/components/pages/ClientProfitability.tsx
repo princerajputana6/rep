@@ -81,14 +81,7 @@ interface CohortRow {
   nrr: number;   // Net Revenue Retention %
   arr: number;   // ARR at start ($k)
 }
-const COHORT_DATA: CohortRow[] = [
-  { cohort: 'Q3 2024', startClients: 8, m1: 100, m2: 98, m3: 105, m4: 108, m5: 112, m6: 118, nrr: 118, arr: 420 },
-  { cohort: 'Q4 2024', startClients: 10, m1: 100, m2: 97, m3: 94, m4: 101, m5: 106, m6: 109, nrr: 109, arr: 560 },
-  { cohort: 'Q1 2025', startClients: 12, m1: 100, m2: 102, m3: 104, m4: 100, m5: 98, m6: 103, nrr: 103, arr: 680 },
-  { cohort: 'Q2 2025', startClients: 9, m1: 100, m2: 96, m3: 92, m4: 88, m5: 91, m6: null as unknown as number, nrr: 91, arr: 480 },
-  { cohort: 'Q3 2025', startClients: 14, m1: 100, m2: 103, m3: 108, m4: 111, m5: null as unknown as number, m6: null as unknown as number, nrr: 111, arr: 760 },
-  { cohort: 'Q4 2025', startClients: 11, m1: 100, m2: 98, m3: 95, m4: null as unknown as number, m5: null as unknown as number, m6: null as unknown as number, nrr: 95, arr: 620 },
-];
+const COHORT_DATA: CohortRow[] = [];
 
 // ─── LTV Intelligence Data ────────────────────────────────────────────────────
 interface LtvClient {
@@ -100,14 +93,7 @@ interface LtvClient {
   avgRevPerMonth: number;
   churnRisk: number; // 0–100
 }
-const LTV_DATA: LtvClient[] = [
-  { name: 'TechCorp', ltv: 1800, cac: 42, ltvCacRatio: 42.9, tier: 'Platinum', avgRevPerMonth: 37500, churnRisk: 8 },
-  { name: 'Digital Wave', ltv: 840, cac: 38, ltvCacRatio: 22.1, tier: 'Gold', avgRevPerMonth: 23333, churnRisk: 22 },
-  { name: 'StartupXYZ', ltv: 420, cac: 35, ltvCacRatio: 12.0, tier: 'Silver', avgRevPerMonth: 14000, churnRisk: 41 },
-  { name: 'MegaRetail', ltv: 2400, cac: 55, ltvCacRatio: 43.6, tier: 'Platinum', avgRevPerMonth: 60000, churnRisk: 12 },
-  { name: 'Creative Hub', ltv: 310, cac: 28, ltvCacRatio: 11.1, tier: 'Bronze', avgRevPerMonth: 8611, churnRisk: 55 },
-  { name: 'FintechPro', ltv: 980, cac: 45, ltvCacRatio: 21.8, tier: 'Gold', avgRevPerMonth: 27222, churnRisk: 19 },
-];
+const LTV_DATA: LtvClient[] = [];
 
 // ─── Retention Risk Scatter Data ──────────────────────────────────────────────
 interface RetentionPoint {
@@ -117,26 +103,10 @@ interface RetentionPoint {
   churnRisk: number;    // z (bubble size proxy)
   status: 'healthy' | 'watch' | 'at-risk';
 }
-const RETENTION_SCATTER: RetentionPoint[] = [
-  { name: 'TechCorp', healthScore: 92, revenue: 450, churnRisk: 8, status: 'healthy' },
-  { name: 'Digital Wave', healthScore: 78, revenue: 280, churnRisk: 22, status: 'watch' },
-  { name: 'StartupXYZ', healthScore: 65, revenue: 168, churnRisk: 41, status: 'watch' },
-  { name: 'MegaRetail', healthScore: 88, revenue: 720, churnRisk: 12, status: 'healthy' },
-  { name: 'Creative Hub', healthScore: 51, revenue: 103, churnRisk: 55, status: 'at-risk' },
-  { name: 'FintechPro', healthScore: 74, revenue: 327, churnRisk: 19, status: 'watch' },
-  { name: 'Acme Global', healthScore: 42, revenue: 215, churnRisk: 68, status: 'at-risk' },
-  { name: 'BlueSky Inc', healthScore: 83, revenue: 390, churnRisk: 14, status: 'healthy' },
-];
+const RETENTION_SCATTER: RetentionPoint[] = [];
 
 // ARR Waterfall data
-const ARR_WATERFALL = [
-  { label: 'Start ARR', value: 2800, fill: '#3b82f6', isTotal: true },
-  { label: 'Expansion', value: 480, fill: '#22c55e', isTotal: false },
-  { label: 'New Logos', value: 320, fill: '#22c55e', isTotal: false },
-  { label: 'Churn', value: -210, fill: '#ef4444', isTotal: false },
-  { label: 'Contraction', value: -90, fill: '#f97316', isTotal: false },
-  { label: 'End ARR', value: 3300, fill: '#3b82f6', isTotal: true },
-];
+const ARR_WATERFALL: { name: string; value: number; cumulative: number; fill: string }[] = [];
 
 function cohortColor(val: number | null): string {
   if (val === null || val === undefined) return 'bg-gray-100 text-gray-300';
@@ -229,258 +199,17 @@ interface UpsellOpportunity {
   recommendations: string[];
 }
 
-const mockClients: Client[] = [
-  {
-    id: '1',
-    name: 'TechCorp Industries',
-    healthScore: 92,
-    trend: 'up',
-    trendChange: 5,
-    status: 'healthy',
-    revenue: 450000,
-    margin: 38.5,
-    marginTrend: 2.3,
-    leakage: 12000,
-    lastUpdated: '2 hours ago',
-    profitabilityScore: 95,
-    scopeStabilityScore: 88,
-    paymentBehaviorScore: 100,
-    resourceStabilityScore: 92,
-    growthMomentumScore: 85,
-    grossMargin: 38.5,
-    netMargin: 28.2,
-    revenueGrowth: 22.5,
-    dso: 28,
-    marginErosion: false,
-    scopeCreep: false,
-    paymentRisk: false,
-    upsellScore: 82,
-    upsellPotential: 75000,
-  },
-  {
-    id: '2',
-    name: 'Digital Wave Solutions',
-    healthScore: 78,
-    trend: 'stable',
-    trendChange: 0,
-    status: 'watch',
-    revenue: 280000,
-    margin: 28.5,
-    marginTrend: -1.5,
-    leakage: 18500,
-    lastUpdated: '3 hours ago',
-    profitabilityScore: 80,
-    scopeStabilityScore: 75,
-    paymentBehaviorScore: 80,
-    resourceStabilityScore: 78,
-    growthMomentumScore: 75,
-    grossMargin: 28.5,
-    netMargin: 18.8,
-    revenueGrowth: 12.3,
-    dso: 42,
-    marginErosion: true,
-    scopeCreep: true,
-    paymentRisk: false,
-    upsellScore: 65,
-    upsellPotential: 35000,
-  },
-  {
-    id: '3',
-    name: 'GlobalRetail Partners',
-    healthScore: 45,
-    trend: 'down',
-    trendChange: -12,
-    status: 'at-risk',
-    revenue: 195000,
-    margin: 12.5,
-    marginTrend: -8.2,
-    leakage: 32000,
-    lastUpdated: '1 hour ago',
-    profitabilityScore: 40,
-    scopeStabilityScore: 45,
-    paymentBehaviorScore: 40,
-    resourceStabilityScore: 50,
-    growthMomentumScore: 35,
-    grossMargin: 12.5,
-    netMargin: 5.2,
-    revenueGrowth: -5.5,
-    dso: 68,
-    marginErosion: true,
-    scopeCreep: true,
-    paymentRisk: true,
-    upsellScore: 25,
-    upsellPotential: 0,
-  },
-  {
-    id: '4',
-    name: 'Innovation Labs',
-    healthScore: 88,
-    trend: 'up',
-    trendChange: 3,
-    status: 'healthy',
-    revenue: 325000,
-    margin: 35.2,
-    marginTrend: 1.8,
-    leakage: 8500,
-    lastUpdated: '4 hours ago',
-    profitabilityScore: 90,
-    scopeStabilityScore: 85,
-    paymentBehaviorScore: 90,
-    resourceStabilityScore: 88,
-    growthMomentumScore: 87,
-    grossMargin: 35.2,
-    netMargin: 25.5,
-    revenueGrowth: 18.2,
-    dso: 32,
-    marginErosion: false,
-    scopeCreep: false,
-    paymentRisk: false,
-    upsellScore: 78,
-    upsellPotential: 55000,
-  },
-];
+const mockClients: Client[] = [];
 
-const mockAlerts: MarginAlert[] = [
-  {
-    id: '1',
-    clientId: '3',
-    clientName: 'GlobalRetail Partners',
-    type: 'critical',
-    severity: 'critical',
-    title: 'Critical Margin Erosion',
-    description: 'Gross margin dropped from 22% to 12.5% in 30 days',
-    impact: 32000,
-    recommendation: 'Immediate repricing or scope reduction required. Consider contract renegotiation.',
-    createdAt: '2 hours ago',
-  },
-  {
-    id: '2',
-    clientId: '2',
-    clientName: 'Digital Wave Solutions',
-    type: 'early-warning',
-    severity: 'medium',
-    title: 'Scope Creep Detected',
-    description: 'Unapproved scope increase of 15% over last 2 weeks',
-    impact: 18500,
-    recommendation: 'Formalize change request process and update statement of work.',
-    createdAt: '5 hours ago',
-  },
-  {
-    id: '3',
-    clientId: '3',
-    clientName: 'GlobalRetail Partners',
-    type: 'structural',
-    severity: 'high',
-    title: 'Structural Pricing Issue',
-    description: 'Rate card 22% below market benchmark for this client type',
-    impact: 45000,
-    recommendation: 'Rate increase of 20-25% recommended at next renewal.',
-    createdAt: '1 day ago',
-  },
-];
+const mockAlerts: MarginAlert[] = [];
 
-const mockLeakage: LeakageItem[] = [
-  {
-    id: '1',
-    clientId: '3',
-    clientName: 'GlobalRetail Partners',
-    type: 'unbilled-hours',
-    amount: 18000,
-    hours: 120,
-    description: '120 hours allocated but not invoiced in last 30 days',
-    recoverable: true,
-  },
-  {
-    id: '2',
-    clientId: '2',
-    clientName: 'Digital Wave Solutions',
-    type: 'scope-overrun',
-    amount: 12500,
-    hours: 85,
-    description: 'Work performed outside retainer agreement',
-    recoverable: true,
-  },
-  {
-    id: '3',
-    clientId: '1',
-    clientName: 'TechCorp Industries',
-    type: 'rate-discount',
-    amount: 8000,
-    hours: 0,
-    description: 'Discount creep vs rate card (avg 12% below standard)',
-    recoverable: false,
-  },
-  {
-    id: '4',
-    clientId: '3',
-    clientName: 'GlobalRetail Partners',
-    type: 'retainer-unused',
-    amount: 14000,
-    hours: 0,
-    description: 'Unused retainer capacity - $14K prepaid not utilized',
-    recoverable: false,
-  },
-];
+const mockLeakage: LeakageItem[] = [];
 
-const mockUpsells: UpsellOpportunity[] = [
-  {
-    id: '1',
-    clientId: '1',
-    clientName: 'TechCorp Industries',
-    score: 82,
-    suggestedIncrease: 15,
-    reasoning: [
-      'Capacity at 92% utilization',
-      'Revenue growth 22.5% YoY',
-      'High-demand skills (AI/ML) heavily used',
-      'Client health score excellent (92)',
-    ],
-    estimatedRevenue: 75000,
-    confidence: 88,
-    recommendations: [
-      'Increase monthly retainer by $6,250 (15%)',
-      'Add AI strategy consulting service',
-      'Expand team by 2 senior resources',
-    ],
-  },
-  {
-    id: '2',
-    clientId: '4',
-    clientName: 'Innovation Labs',
-    score: 78,
-    suggestedIncrease: 12,
-    reasoning: [
-      'Consistent growth trajectory',
-      'High satisfaction scores',
-      'Expanding project scope naturally',
-      'Under-utilizing available capacity',
-    ],
-    estimatedRevenue: 55000,
-    confidence: 82,
-    recommendations: [
-      'Increase retainer by $3,900 (12%)',
-      'Propose additional service line',
-      'Cross-sell design services',
-    ],
-  },
-];
+const mockUpsells: UpsellOpportunity[] = [];
 
-const healthTrendData = [
-  { month: 'Aug', avg: 78 },
-  { month: 'Sep', avg: 80 },
-  { month: 'Oct', avg: 79 },
-  { month: 'Nov', avg: 82 },
-  { month: 'Dec', avg: 81 },
-  { month: 'Jan', avg: 84 },
-  { month: 'Feb', avg: 83 },
-];
+const healthTrendData: { month: string; healthy: number; atRisk: number; critical: number }[] = [];
 
-const marginDistributionData = [
-  { range: '< 15%', count: 3, color: '#ef4444' },
-  { range: '15-25%', count: 5, color: '#f59e0b' },
-  { range: '25-35%', count: 12, color: '#3b82f6' },
-  { range: '> 35%', count: 8, color: '#10b981' },
-];
+const marginDistributionData: { name: string; value: number; color: string }[] = [];
 
 const COLORS = ['#ef4444', '#f59e0b', '#3b82f6', '#10b981'];
 

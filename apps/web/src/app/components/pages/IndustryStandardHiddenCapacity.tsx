@@ -3,7 +3,8 @@
  * Enterprise-grade capacity intelligence and optimization platform
  */
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
@@ -422,6 +423,21 @@ const mockSkillGaps: SkillGap[] = [
 export function IndustryStandardHiddenCapacity() {
   const [selectedView, setSelectedView] = useState<'overview' | 'resources' | 'insights' | 'skills' | 'forecast'>('overview');
   const [selectedResource, setSelectedResource] = useState<Resource | null>(null);
+  // Replace mockResources at runtime with real resources from /analytics/hidden-capacity.
+  const [mockResources, setMockResources] = useState<Resource[]>([]);
+  useEffect(() => {
+    api.get<{ underutilized: { id: string; name: string; role: string; allocatedHours: number; utilizationPct: number; idleHours: number }[] }>('/analytics/hidden-capacity')
+      .then((res) => {
+        setMockResources(res.underutilized.map((r): Resource => ({
+          id: r.id, name: r.name, role: r.role, department: r.role, location: '—',
+          skills: [], currentUtilization: r.utilizationPct, availableCapacity: r.idleHours,
+          hourlyRate: 0, experienceYears: 0, certifications: [], avatar: '',
+          availability: [], performanceScore: 100, revenueGenerated: 0,
+          projectsCompleted: 0, utilizationTrend: 'stable', predictedAvailability: [],
+        })));
+      })
+      .catch(() => {/* keep empty */});
+  }, []);
   const [showResourceDialog, setShowResourceDialog] = useState(false);
   const [filterDepartment, setFilterDepartment] = useState<string>('all');
   const [filterUtilization, setFilterUtilization] = useState<string>('all');

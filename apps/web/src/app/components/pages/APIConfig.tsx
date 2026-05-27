@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -189,9 +190,27 @@ const mockIntegrations: IntegrationConfig[] = [
 ];
 
 export function APIConfig() {
-  const [apiKeys, setApiKeys] = useState<APIKey[]>(mockAPIKeys);
-  const [oauth2Configs, setOAuth2Configs] = useState<OAuth2Config[]>(mockOAuth2Configs);
-  const [integrations, setIntegrations] = useState<IntegrationConfig[]>(mockIntegrations);
+  const [apiKeys, setApiKeys] = useState<APIKey[]>([]);
+  const [oauth2Configs, setOAuth2Configs] = useState<OAuth2Config[]>([]);
+  const [integrations, setIntegrations] = useState<IntegrationConfig[]>([]);
+
+  // API keys come from the new /api-keys endpoint. The plaintext key
+  // is only returned on POST — list view shows the prefix only.
+  useEffect(() => {
+    api.get<Record<string, unknown>[]>('/api-keys')
+      .then((rows) => setApiKeys((Array.isArray(rows) ? rows : []).map((r): APIKey => ({
+        id: String(r._id ?? ''),
+        name: String(r.name ?? '—'),
+        key: String(r.prefix ?? '') + '••••',
+        created: r.createdAt ? String(r.createdAt).slice(0, 10) : '',
+        lastUsed: r.lastUsedAt ? String(r.lastUsedAt).slice(0, 10) : 'Never',
+        permissions: Array.isArray(r.scopes) ? (r.scopes as string[]) : [],
+        status: r.active === false ? 'revoked' : 'active',
+      }))))
+      .catch(() => {/* keep empty */})
+    // OAuth2 + Integrations remain UI-only until backend endpoints exist
+    // (only the static Workfront / ClickUp connectors are wired today).
+  }, []);
   const [showCreateAPIKey, setShowCreateAPIKey] = useState(false);
   const [showCreateOAuth, setShowCreateOAuth] = useState(false);
   const [showConfigureIntegration, setShowConfigureIntegration] = useState(false);

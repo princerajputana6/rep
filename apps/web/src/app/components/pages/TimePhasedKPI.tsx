@@ -42,39 +42,12 @@ import {
   Area,
 } from 'recharts';
 
-const timePhasedData = [
-  { period: 'Jan 2025', budget: 120000, actual: 115000, earned: 118000, variance: 5000 },
-  { period: 'Feb 2025', budget: 125000, actual: 128000, earned: 126000, variance: -3000 },
-  { period: 'Mar 2025', budget: 130000, actual: 127000, earned: 132000, variance: 3000 },
-  { period: 'Apr 2025', budget: 128000, actual: 130000, earned: 129000, variance: -2000 },
-  { period: 'May 2025', budget: 135000, actual: 133000, earned: 136000, variance: 2000 },
-  { period: 'Jun 2025', budget: 140000, actual: 138000, earned: 142000, variance: 2000 },
-];
-
-const roiData = [
-  { period: 'Q1 2025', revenue: 450000, cost: 360000, profit: 90000, roi: 25 },
-  { period: 'Q2 2025', revenue: 480000, cost: 375000, profit: 105000, roi: 28 },
-  { period: 'Q3 2025', revenue: 510000, cost: 390000, profit: 120000, roi: 31 },
-  { period: 'Q4 2025', revenue: 540000, cost: 405000, profit: 135000, roi: 33 },
-];
-
-const trendData = [
-  { month: 'Jan', budget: 120, actual: 115, earned: 118, cv: 3, sv: -2, cpi: 1.03, spi: 0.98 },
-  { month: 'Feb', budget: 125, actual: 128, earned: 126, cv: -2, sv: 1, cpi: 0.98, spi: 1.01 },
-  { month: 'Mar', budget: 130, actual: 127, earned: 132, cv: 5, sv: 2, cpi: 1.04, spi: 1.02 },
-  { month: 'Apr', budget: 128, actual: 130, earned: 129, cv: -1, sv: 1, cpi: 0.99, spi: 1.01 },
-  { month: 'May', budget: 135, actual: 133, earned: 136, cv: 3, sv: 1, cpi: 1.02, spi: 1.01 },
-  { month: 'Jun', budget: 140, actual: 138, earned: 142, cv: 4, sv: 2, cpi: 1.03, spi: 1.01 },
-];
-
-const fteData = [
-  { period: 'Jan', fte: 45.2, hours: 7232, projects: 12 },
-  { period: 'Feb', fte: 46.8, hours: 7488, projects: 13 },
-  { period: 'Mar', fte: 48.5, hours: 7760, projects: 14 },
-  { period: 'Apr', fte: 47.3, hours: 7568, projects: 14 },
-  { period: 'May', fte: 49.1, hours: 7856, projects: 15 },
-  { period: 'Jun', fte: 50.4, hours: 8064, projects: 16 },
-];
+// Time-phased aggregations are emptied until the backend wires per-period
+// earned-value / ROI / FTE computations. Charts render empty but honestly.
+const timePhasedData: { period: string; budget: number; actual: number; earned: number; variance: number }[] = [];
+const roiData: { period: string; revenue: number; cost: number; profit: number; roi: number }[] = [];
+const trendData: { month: string; budget: number; actual: number; earned: number; cv: number; sv: number; cpi: number; spi: number }[] = [];
+const fteData: { period: string; fte: number; hours: number; projects: number }[] = [];
 
 export function TimePhasedKPI() {
   const [selectedReport, setSelectedReport] = useState<'time-phased' | 'roi' | 'budget-actual' | 'trend' | 'fte'>('time-phased');
@@ -190,8 +163,8 @@ export function TimePhasedKPI() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Total Budget</p>
-                <p className="text-2xl font-semibold text-gray-900">$778K</p>
-                <p className="text-xs text-blue-600 mt-1">6-month period</p>
+                <p className="text-2xl font-semibold text-gray-900">—</p>
+                <p className="text-xs text-blue-600 mt-1">No data</p>
               </div>
             </div>
           </CardContent>
@@ -205,8 +178,8 @@ export function TimePhasedKPI() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Earned Value</p>
-                <p className="text-2xl font-semibold text-gray-900">$783K</p>
-                <p className="text-xs text-green-600 mt-1">+0.6% variance</p>
+                <p className="text-2xl font-semibold text-gray-900">—</p>
+                <p className="text-xs text-green-600 mt-1">No data</p>
               </div>
             </div>
           </CardContent>
@@ -220,7 +193,7 @@ export function TimePhasedKPI() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">CPI</p>
-                <p className="text-2xl font-semibold text-gray-900">1.02</p>
+                <p className="text-2xl font-semibold text-gray-900">—</p>
                 <p className="text-xs text-purple-600 mt-1">Cost performance</p>
               </div>
             </div>
@@ -235,7 +208,7 @@ export function TimePhasedKPI() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">SPI</p>
-                <p className="text-2xl font-semibold text-gray-900">1.01</p>
+                <p className="text-2xl font-semibold text-gray-900">—</p>
                 <p className="text-xs text-amber-600 mt-1">Schedule performance</p>
               </div>
             </div>

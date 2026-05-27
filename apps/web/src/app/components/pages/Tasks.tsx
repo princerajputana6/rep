@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
@@ -647,9 +648,50 @@ function CampaignGroup({
 interface TasksProps { onPageChange?: (p: Page) => void; }
 
 export function Tasks({ onPageChange = () => {} }: TasksProps) {
-  const [intTasks,    setIntTasks]    = useState(initIntegrated);
-  const [camTasks,    setCamTasks]    = useState(initCampaignTasks);
+  const [intTasks,    setIntTasks]    = useState<IntegratedTask[]>([]);
+  const [camTasks,    setCamTasks]    = useState<CampaignTask[]>([]);
   const [campaigns]                   = useState(initCampaigns);
+
+  // Load tasks from the API; everything with externalSource becomes
+  // an integrated task, everything else lands in the campaign bucket.
+  useEffect(() => {
+    api.get<Record<string, unknown>[]>('/tasks')
+      .then((rows) => {
+        const list = Array.isArray(rows) ? rows : []
+        const intg: IntegratedTask[] = []
+        const camp: CampaignTask[] = []
+        const SRC: Record<string, IntegrationSource> = {
+          workfront: 'Workfront', jira: 'Jira', clickup: 'ClickUp',
+          asana: 'Asana', monday: 'Monday.com', zoho: 'Zoho',
+        }
+        const STATUS: Record<string, TaskStatus> = {
+          TODO: 'not-started', IN_PROGRESS: 'in-progress', BLOCKED: 'blocked',
+          DONE: 'done', COMPLETED: 'done',
+        }
+        list.forEach((r) => {
+          const id = String(r._id ?? '')
+          const status = STATUS[String(r.status ?? 'TODO').toUpperCase()] ?? 'not-started'
+          const src = SRC[String(r.externalSource ?? '').toLowerCase()]
+          const base = {
+            id,
+            taskName: String(r.title ?? '—'),
+            taskId: String(r.externalId ?? id.slice(-6).toUpperCase()),
+            startDate: r.dueDate ? String(r.dueDate).slice(0, 10) : '',
+            dueDate: r.dueDate ? String(r.dueDate).slice(0, 10) : '',
+            status, description: String(r.description ?? ''),
+            estimatedHours: Number(r.estimatedHours ?? 0),
+            owners: [] as TaskOwner[], assignmentCount: 0,
+          }
+          if (src) {
+            intg.push({ ...base, source: src, projectName: String(r.projectId ?? '—') })
+          } else {
+            camp.push({ ...base, campaignId: 'unassigned', campaignName: 'Unassigned' })
+          }
+        })
+        setIntTasks(intg); setCamTasks(camp)
+      })
+      .catch(() => {/* keep empty */})
+  }, []);
   const [activeTab,   setActiveTab]   = useState<'integrated' | 'campaign'>('integrated');
   const [search,      setSearch]      = useState('');
   const [sourceFilter, setSourceFilter] = useState<'all' | IntegrationSource>('all');

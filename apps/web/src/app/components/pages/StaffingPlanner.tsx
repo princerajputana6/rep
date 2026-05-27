@@ -71,27 +71,11 @@ interface StaffingPlan {
 
 // ─── Static data (existing tabs) ────────────────────────────────────────────
 
-const resourcePlannerData = [
-  { project: 'Digital Transformation', budgeted: 500, actual: 450, available: 50, role: 'Developer' },
-  { project: 'Mobile App Redesign', budgeted: 300, actual: 320, available: -20, role: 'Designer' },
-  { project: 'Cloud Migration', budgeted: 800, actual: 750, available: 50, role: 'DevOps' },
-  { project: 'CRM Implementation', budgeted: 600, actual: 580, available: 20, role: 'Analyst' },
-];
+const resourcePlannerData: { project: string; budgeted: number; actual: number; available: number; role: string }[] = [];
 
-const workloadData = [
-  { user: 'Sarah Mitchell', capacity: 100, allocated: 85, available: 15, status: 'optimal' },
-  { user: 'Michael Chen', capacity: 100, allocated: 110, available: -10, status: 'overallocated' },
-  { user: 'Emily Rodriguez', capacity: 100, allocated: 60, available: 40, status: 'underutilized' },
-  { user: 'James Wilson', capacity: 100, allocated: 95, available: 5, status: 'optimal' },
-  { user: 'Lisa Anderson', capacity: 100, allocated: 75, available: 25, status: 'optimal' },
-  { user: 'David Brown', capacity: 100, allocated: 120, available: -20, status: 'overallocated' },
-];
+const workloadData: { user: string; allocated: number; available: number; current: number; capacity: number; status: string }[] = [];
 
-const scenarioData = [
-  { scenario: 'Current State', cost: 1200000, resources: 45, projects: 12, roi: 18 },
-  { scenario: 'Growth Scenario', cost: 1800000, resources: 65, projects: 18, roi: 22 },
-  { scenario: 'Optimized', cost: 1400000, resources: 52, projects: 15, roi: 25 },
-];
+const scenarioData: { scenario: string; cost: number; resources: number; projects: number; roi: number }[] = [];
 
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -402,8 +386,8 @@ export function StaffingPlanner() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Total Resources</p>
-                <p className="text-2xl font-semibold text-gray-900">45</p>
-                <p className="text-xs text-green-600 mt-1">↑ 5 new this quarter</p>
+                <p className="text-2xl font-semibold text-gray-900">{plans.length}</p>
+                <p className="text-xs text-gray-500 mt-1">From staffing plans</p>
               </div>
             </div>
           </CardContent>
@@ -417,8 +401,8 @@ export function StaffingPlanner() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Avg. Utilization</p>
-                <p className="text-2xl font-semibold text-gray-900">82.5%</p>
-                <p className="text-xs text-green-600 mt-1">Optimal range</p>
+                <p className="text-2xl font-semibold text-gray-900">—</p>
+                <p className="text-xs text-gray-500 mt-1">No data</p>
               </div>
             </div>
           </CardContent>
@@ -432,8 +416,8 @@ export function StaffingPlanner() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Overallocated</p>
-                <p className="text-2xl font-semibold text-gray-900">2</p>
-                <p className="text-xs text-amber-600 mt-1">Requires attention</p>
+                <p className="text-2xl font-semibold text-gray-900">0</p>
+                <p className="text-xs text-gray-500 mt-1">No data</p>
               </div>
             </div>
           </CardContent>
@@ -447,8 +431,8 @@ export function StaffingPlanner() {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Available Capacity</p>
-                <p className="text-2xl font-semibold text-gray-900">125h</p>
-                <p className="text-xs text-purple-600 mt-1">This week</p>
+                <p className="text-2xl font-semibold text-gray-900">—</p>
+                <p className="text-xs text-gray-500 mt-1">No data</p>
               </div>
             </div>
           </CardContent>

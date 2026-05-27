@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
@@ -52,62 +53,7 @@ interface ResourceMatch {
   };
 }
 
-const mockMatches: ResourceMatch[] = [
-  {
-    id: '1',
-    name: 'Sarah Mitchell',
-    role: 'Senior Full Stack Developer',
-    matchScore: 95,
-    skills: ['React', 'Node.js', 'TypeScript', 'AWS', 'GraphQL'],
-    availability: 100,
-    experience: 8,
-    costRate: 185,
-    location: 'New York, NY',
-    matchFactors: {
-      skillMatch: 98,
-      experienceMatch: 95,
-      availabilityMatch: 100,
-      costEfficiency: 85,
-      pastPerformance: 92,
-    },
-  },
-  {
-    id: '2',
-    name: 'Michael Chen',
-    role: 'Full Stack Developer',
-    matchScore: 88,
-    skills: ['React', 'Node.js', 'TypeScript', 'Docker', 'MongoDB'],
-    availability: 80,
-    experience: 6,
-    costRate: 155,
-    location: 'San Francisco, CA',
-    matchFactors: {
-      skillMatch: 92,
-      experienceMatch: 85,
-      availabilityMatch: 80,
-      costEfficiency: 95,
-      pastPerformance: 88,
-    },
-  },
-  {
-    id: '3',
-    name: 'Emily Rodriguez',
-    role: 'Senior Frontend Developer',
-    matchScore: 82,
-    skills: ['React', 'Vue.js', 'TypeScript', 'CSS', 'Figma'],
-    availability: 60,
-    experience: 7,
-    costRate: 165,
-    location: 'Austin, TX',
-    matchFactors: {
-      skillMatch: 85,
-      experienceMatch: 88,
-      availabilityMatch: 60,
-      costEfficiency: 88,
-      pastPerformance: 90,
-    },
-  },
-];
+const mockMatches: ResourceMatch[] = [];
 
 export function AIResourceMatching() {
   const [projectRequirements, setProjectRequirements] = useState({
@@ -122,12 +68,33 @@ export function AIResourceMatching() {
   const [matches, setMatches] = useState<ResourceMatch[]>([]);
   const [selectedMatch, setSelectedMatch] = useState<ResourceMatch | null>(null);
 
-  const handleSearch = () => {
+  // Pull pre-computed match-suggestion insights from the generic store.
+  // Real-time matching would replace this with a /matching/search POST.
+  const handleSearch = async () => {
     setIsSearching(true);
-    setTimeout(() => {
+    try {
+      const rows = await api.get<{ _id: string; title: string; data: Record<string, unknown>; score?: number }[]>('/insights?type=match-suggestion')
+      const list = Array.isArray(rows) ? rows : []
+      setMatches(list.map((r) => ({
+        id: r._id,
+        name: r.title,
+        role: String(r.data.role ?? '—'),
+        matchScore: r.score ?? 0,
+        skills: Array.isArray(r.data.skills) ? (r.data.skills as string[]) : [],
+        availability: Number(r.data.availability ?? 0),
+        experience: Number(r.data.experience ?? 0),
+        costRate: Number(r.data.costRate ?? 0),
+        location: String(r.data.location ?? '—'),
+        matchFactors: (r.data.matchFactors as ResourceMatch['matchFactors']) ?? {
+          skillMatch: 0, experienceMatch: 0, availabilityMatch: 0,
+          costEfficiency: 0, pastPerformance: 0,
+        },
+      })))
+    } catch {
       setMatches(mockMatches);
+    } finally {
       setIsSearching(false);
-    }, 2000);
+    }
   };
 
   const getMatchColor = (score: number) => {

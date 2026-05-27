@@ -4,7 +4,8 @@
  * Revenue Recognition · Portfolio Heatmap · Budget Cases · Approval Workflow
  */
 
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/app/components/ui/card';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
@@ -1134,10 +1135,54 @@ function ProjectDetailDialog({ project, open, onClose, onUpdate }: { project: Pr
 }
 
 // ─── Main Export ────────────────────────────────────────────────────────────────
+// Maps an API project doc into the rich local Project shape, filling
+// UI-only fields (milestones, expenses, workflow, etc.) with safe defaults.
+function mapApiToProject(p: Record<string, unknown>): Project {
+  const status = String(p.status ?? 'ACTIVE').toLowerCase()
+  const normalizedStatus = (
+    status === 'active' || status === 'planning' || status === 'on-hold' ||
+    status === 'completed' || status === 'cancelled'
+  ) ? status as ProjectStatus : 'active'
+  return {
+    id: String(p._id ?? p.id ?? ''),
+    name: String(p.name ?? '—'),
+    description: String(p.description ?? ''),
+    type: (p.type as ProjectType) ?? 'fixed',
+    archetype: 'Strategic',
+    status: normalizedStatus,
+    pulseScore: Number(p.healthScore ?? 0),
+    deliveryConfidence: Number(p.deliveryConfidence ?? 0),
+    scopeFrozen: false,
+    client: '', agency: '', owner: '', resourcePool: '',
+    budget: Number(p.budget ?? 0),
+    currency: 'USD', billingType: 'milestone', poNumber: '',
+    startDate: p.startDate ? String(p.startDate).slice(0, 10) : '',
+    endDate: p.endDate ? String(p.endDate).slice(0, 10) : '',
+    tags: [],
+    riskLevel: ((p.riskLevel as RiskLevel) ?? 'low'),
+    budgetBurnPct: Number(p.budgetBurnPct ?? 0),
+    timelineProgressPct: 0,
+    milestones: [], workflow: DEF_STAGES,
+    expenses: [], invoices: [],
+    revenueSchedule: [],
+    approvalWorkflow: false, shareableLink: '', customFormId: '',
+    source: String(p.externalSource ?? 'manual'),
+  }
+}
+
 export function Projects() {
   const [activeTab, setActiveTab] = useState('board');
-  const [projects, setProjects] = useState<Project[]>(MOCK_PROJECTS);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loadingProjects, setLoadingProjects] = useState(true);
   const [templates] = useState<ProjectTemplate[]>(MOCK_TEMPLATES);
+
+  useEffect(() => {
+    setLoadingProjects(true);
+    api.get<Record<string, unknown>[]>('/projects')
+      .then((rows) => setProjects((Array.isArray(rows) ? rows : []).map(mapApiToProject)))
+      .catch((e: Error) => toast.error(e.message ?? 'Failed to load projects'))
+      .finally(() => setLoadingProjects(false));
+  }, []);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [quickName, setQuickName] = useState('');

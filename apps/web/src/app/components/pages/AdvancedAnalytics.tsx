@@ -56,94 +56,17 @@ import {
   ComposedChart,
 } from 'recharts';
 
-const utilizationTrendData = [
-  { month: 'Jul', actual: 72, predicted: 71, benchmark: 75 },
-  { month: 'Aug', actual: 75, predicted: 74, benchmark: 75 },
-  { month: 'Sep', actual: 78, predicted: 77, benchmark: 75 },
-  { month: 'Oct', actual: 82, predicted: 80, benchmark: 75 },
-  { month: 'Nov', actual: 76, predicted: 78, benchmark: 75 },
-  { month: 'Dec', actual: 79, predicted: 79, benchmark: 75 },
-  { month: 'Jan', actual: 81, predicted: 82, benchmark: 75 },
-  { month: 'Feb', actual: null, predicted: 84, benchmark: 75 },
-  { month: 'Mar', actual: null, predicted: 86, benchmark: 75 },
-];
+const utilizationTrendData: { month: string; actual: number | null; predicted: number | null; benchmark: number }[] = [];
 
-const revenueForecastData = [
-  { month: 'Jul', revenue: 2.1, forecast: 2.1, target: 2.5 },
-  { month: 'Aug', revenue: 2.3, forecast: 2.3, target: 2.5 },
-  { month: 'Sep', revenue: 2.4, forecast: 2.4, target: 2.5 },
-  { month: 'Oct', revenue: 2.6, forecast: 2.6, target: 2.5 },
-  { month: 'Nov', revenue: 2.5, forecast: 2.5, target: 2.5 },
-  { month: 'Dec', revenue: 2.7, forecast: 2.7, target: 2.5 },
-  { month: 'Jan', revenue: 2.8, forecast: 2.8, target: 2.5 },
-  { month: 'Feb', revenue: null, forecast: 3.0, target: 2.5 },
-  { month: 'Mar', revenue: null, forecast: 3.2, target: 2.5 },
-  { month: 'Apr', revenue: null, forecast: 3.4, target: 2.5 },
-];
+const revenueForecastData: { month: string; revenue: number | null; forecast: number | null; target: number }[] = [];
 
-const departmentData = [
-  { department: 'Engineering', utilization: 85, capacity: 120, available: 18 },
-  { department: 'Design', utilization: 78, capacity: 40, available: 9 },
-  { department: 'Product', utilization: 92, capacity: 25, available: 2 },
-  { department: 'QA', utilization: 65, capacity: 30, available: 11 },
-  { department: 'DevOps', utilization: 91, capacity: 15, available: 1 },
-];
+const departmentData: { department: string; utilization: number; capacity: number; available: number }[] = [];
 
-const skillDistribution = [
-  { skill: 'React', count: 45 },
-  { skill: 'Node.js', count: 38 },
-  { skill: 'Python', count: 32 },
-  { skill: 'AWS', count: 28 },
-  { skill: 'Design', count: 25 },
-  { skill: 'Product', count: 18 },
-];
+const skillDistribution: { skill: string; count: number }[] = [];
 
-const benchmarkData = [
-  { category: 'Utilization', yourOrg: 78.5, industry: 72, topPerformer: 85 },
-  { category: 'Response Time', yourOrg: 85, industry: 70, topPerformer: 95 },
-  { category: 'Allocation Accuracy', yourOrg: 92, industry: 75, topPerformer: 98 },
-  { category: 'Resource Efficiency', yourOrg: 88, industry: 78, topPerformer: 92 },
-  { category: 'Cost Optimization', yourOrg: 82, industry: 68, topPerformer: 90 },
-];
+const benchmarkData: { category: string; yourOrg: number; industry: number; topPerformer: number }[] = [];
 
-const predictiveInsights = [
-  {
-    id: '1',
-    type: 'warning',
-    title: 'DevOps Capacity Constraint',
-    description: 'Model predicts 95% utilization by March 2025',
-    confidence: 87,
-    impact: 'high',
-    recommendation: 'Consider hiring 2 senior DevOps engineers or negotiate resource sharing agreement',
-  },
-  {
-    id: '2',
-    type: 'opportunity',
-    title: 'Frontend Optimization Opportunity',
-    description: 'Reallocation could improve efficiency by 12% and save $45K annually',
-    confidence: 92,
-    impact: 'medium',
-    recommendation: 'Redistribute 3 developers from Project Beta to emerging initiatives',
-  },
-  {
-    id: '3',
-    type: 'success',
-    title: 'Revenue Target Achievement',
-    description: 'On track to exceed Q2 revenue target by 8%',
-    confidence: 94,
-    impact: 'high',
-    recommendation: 'Maintain current allocation strategy and resource distribution',
-  },
-  {
-    id: '4',
-    type: 'info',
-    title: 'Skill Gap Analysis',
-    description: 'Growing demand for Kubernetes expertise detected',
-    confidence: 78,
-    impact: 'medium',
-    recommendation: 'Invest in upskilling program for 5-7 engineers over next 6 months',
-  },
-];
+const predictiveInsights: { id: string; type: string; title: string; description: string; impact: string; confidence: number; actionRequired: boolean; recommendation: string }[] = [];
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#6366f1'];
 

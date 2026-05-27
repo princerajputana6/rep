@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
@@ -36,69 +37,26 @@ export function AuditLogs() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterAction, setFilterAction] = useState('all');
   const [filterEntity, setFilterEntity] = useState('all');
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
 
-  const auditLogs: AuditLog[] = [
-    {
-      id: 'AL-00145',
-      timestamp: '2024-02-01 14:32:15',
-      user: 'john.smith@acme.com',
-      action: 'CREATE',
-      entity: 'BorrowRequest',
-      entityId: 'BR-001',
-      changes: 'Created borrow request for Senior Developer (3 months, $72K)',
-      ipAddress: '192.168.1.45'
-    },
-    {
-      id: 'AL-00144',
-      timestamp: '2024-02-01 14:15:42',
-      user: 'sarah.johnson@acme.com',
-      action: 'UPDATE',
-      entity: 'User',
-      entityId: 'USR-234',
-      changes: 'Updated job role from Mid Developer to Senior Developer',
-      ipAddress: '192.168.1.22'
-    },
-    {
-      id: 'AL-00143',
-      timestamp: '2024-02-01 13:58:03',
-      user: 'michael.chen@creative.com',
-      action: 'APPROVE',
-      entity: 'BorrowRequest',
-      entityId: 'BR-002',
-      changes: 'Approved borrow request BR-002 (UX Designer, 2 months)',
-      ipAddress: '10.0.0.15'
-    },
-    {
-      id: 'AL-00142',
-      timestamp: '2024-02-01 13:22:18',
-      user: 'emma.davis@tech.com',
-      action: 'CREATE',
-      entity: 'TieUp',
-      entityId: 'TU-012',
-      changes: 'Created tie-up between TechVentures and Digital Wave',
-      ipAddress: '172.16.0.8'
-    },
-    {
-      id: 'AL-00141',
-      timestamp: '2024-02-01 12:45:55',
-      user: 'lisa.anderson@acme.com',
-      action: 'UPDATE',
-      entity: 'RateCard',
-      entityId: 'RC-005',
-      changes: 'Updated bill rate from $80/hr to $85/hr',
-      ipAddress: '192.168.1.67'
-    },
-    {
-      id: 'AL-00140',
-      timestamp: '2024-02-01 11:33:29',
-      user: 'james.wilson@wave.com',
-      action: 'DELETE',
-      entity: 'User',
-      entityId: 'USR-189',
-      changes: 'Deactivated user account (role: QA Engineer)',
-      ipAddress: '10.0.0.42'
-    },
-  ];
+  useEffect(() => {
+    api.get<Record<string, unknown>[]>('/audit-logs')
+      .then((rows) => {
+        const list = Array.isArray(rows) ? rows : []
+        setAuditLogs(list.map((r): AuditLog => ({
+          id: String(r._id ?? ''),
+          timestamp: r.createdAt ? new Date(String(r.createdAt)).toISOString().replace('T', ' ').slice(0, 19) : '',
+          user: String(r.userEmail ?? r.userId ?? '—'),
+          action: String(r.action ?? '—').toUpperCase(),
+          entity: String(r.entity ?? r.resourceType ?? '—'),
+          entityId: String(r.entityId ?? r.resourceId ?? ''),
+          changes: String(r.description ?? r.changes ?? ''),
+          ipAddress: String(r.ipAddress ?? '—'),
+        })))
+      })
+      .catch(() => {/* keep empty */})
+  }, []);
+
 
   const filteredLogs = auditLogs.filter((log) => {
     const matchesSearch = log.user.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -151,26 +109,30 @@ export function AuditLogs() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
-            <div className="text-sm text-gray-600">Total Entries (30d)</div>
-            <div className="text-2xl font-semibold text-gray-900 mt-1">12,847</div>
+            <div className="text-sm text-gray-600">Total Entries (loaded)</div>
+            <div className="text-2xl font-semibold text-gray-900 mt-1">{auditLogs.length}</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-sm text-gray-600">Active Users (24h)</div>
-            <div className="text-2xl font-semibold text-gray-900 mt-1">247</div>
+            <div className="text-sm text-gray-600">Unique Users</div>
+            <div className="text-2xl font-semibold text-gray-900 mt-1">
+              {new Set(auditLogs.map((l) => l.user)).size}
+            </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-sm text-gray-600">Actions (24h)</div>
-            <div className="text-2xl font-semibold text-gray-900 mt-1">1,523</div>
+            <div className="text-sm text-gray-600">Unique Actions</div>
+            <div className="text-2xl font-semibold text-gray-900 mt-1">
+              {new Set(auditLogs.map((l) => l.action)).size}
+            </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-sm text-gray-600">Retention Period</div>
-            <div className="text-2xl font-semibold text-gray-900 mt-1">7 years</div>
+            <div className="text-sm text-gray-600">Retention</div>
+            <div className="text-2xl font-semibold text-gray-900 mt-1">—</div>
           </CardContent>
         </Card>
       </div>

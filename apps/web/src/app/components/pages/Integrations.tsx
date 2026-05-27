@@ -98,12 +98,10 @@ interface ClickUpFormState {
 // Static integrations (no real backend connector yet)
 // ─────────────────────────────────────────────────────────────────────────────
 
-const STATIC_INTEGRATIONS: Integration[] = [
-  { id: 'jira', name: 'Jira', description: 'Project management for software teams', icon: '🔷', status: 'connected', lastSync: '2024-01-26 10:15 AM', frequency: 'Every 20 minutes', resources: 67, projects: 28, color: 'bg-blue-600' },
-  { id: 'planview', name: 'Planview', description: 'Portfolio and resource management', icon: '📈', status: 'connected', lastSync: '2024-01-26 10:20 AM', frequency: 'Every 1 hour', resources: 42, projects: 15, color: 'bg-indigo-600' },
-  { id: 'smartsheet', name: 'Smartsheet', description: 'Collaborative work management', icon: '📋', status: 'disconnected', color: 'bg-blue-500' },
-  { id: 'monday', name: 'Monday.com', description: 'Work operating system for teams', icon: '📅', status: 'disconnected', color: 'bg-pink-500' },
-];
+// Only Workfront + ClickUp have real connector backends today. Removed the
+// hardcoded Jira / Planview / Smartsheet / Monday tiles — they were lying
+// about being connected with fake "67 resources" etc.
+const STATIC_INTEGRATIONS: Integration[] = [];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers

@@ -1,199 +1,137 @@
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
-import { Button } from '@/app/components/ui/button';
-import { Badge } from '@/app/components/ui/badge';
-import { Input } from '@/app/components/ui/input';
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card'
+import { Button } from '@/app/components/ui/button'
+import { Badge } from '@/app/components/ui/badge'
+import { Input } from '@/app/components/ui/input'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/app/components/ui/table';
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/app/components/ui/table'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/app/components/ui/dialog';
-import { Label } from '@/app/components/ui/label';
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '@/app/components/ui/dialog'
+import { Label } from '@/app/components/ui/label'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/app/components/ui/select';
-import { Search, Plus, Edit, MoreVertical, UserCheck, UserX, FileText } from 'lucide-react';
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/app/components/ui/select'
+import { Search, Plus, Edit, MoreVertical, Loader2, Users as UsersIcon } from 'lucide-react'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/app/components/ui/dropdown-menu';
-import { useAgencyContext } from '@/app/context/AgencyContext';
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/app/components/ui/dropdown-menu'
+import { toast } from 'sonner'
+import { api } from '@/lib/api'
+import { networkService, type Agency } from '@/app/services/networkService'
 
 interface User {
-  id: string;
-  name: string;
-  email: string;
-  agency: string;
-  systemRole: string;
-  jobRole: string;
-  rateCard: string;
-  status: 'active' | 'inactive';
-  workingHours: string;
+  _id: string
+  name: string
+  email: string
+  agencyId: string
+  role: string
+  status?: string
+  active?: boolean
+  createdAt: string
 }
 
+const SYSTEM_ROLES = ['AGENCY_OWNER', 'RESOURCE_MANAGER', 'PROJECT_MANAGER', 'FINANCE_CONTROLLER', 'VIEWER', 'SUPER_ADMIN']
+
 export function UserManagement() {
-  const { selectedAgency, agencies: allAgencies } = useAgencyContext();
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterAgency, setFilterAgency] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [items, setItems] = useState<User[]>([])
+  const [agencies, setAgencies] = useState<Agency[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterAgency, setFilterAgency] = useState('all')
+  const [filterStatus, setFilterStatus] = useState('all')
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
 
-  const users: User[] = [
-    {
-      id: '1',
-      name: 'Sarah Johnson',
-      email: 'sarah.j@acmedigital.com',
-      agency: 'Acme Digital',
-      systemRole: 'Resource Manager',
-      jobRole: 'Senior Developer',
-      rateCard: 'RC-001',
-      status: 'active',
-      workingHours: '40h/week'
-    },
-    {
-      id: '2',
-      name: 'Michael Chen',
-      email: 'm.chen@creativeco.com',
-      agency: 'CreativeCo',
-      systemRole: 'Project Manager',
-      jobRole: 'UX Designer',
-      rateCard: 'RC-002',
-      status: 'active',
-      workingHours: '40h/week'
-    },
-    {
-      id: '3',
-      name: 'Emma Davis',
-      email: 'emma.d@techventures.com',
-      agency: 'TechVentures',
-      systemRole: 'Admin',
-      jobRole: 'Product Manager',
-      rateCard: 'RC-003',
-      status: 'active',
-      workingHours: '35h/week'
-    },
-    {
-      id: '4',
-      name: 'James Wilson',
-      email: 'j.wilson@digitalwave.com',
-      agency: 'Digital Wave',
-      systemRole: 'Finance Controller',
-      jobRole: 'Data Analyst',
-      rateCard: 'RC-004',
-      status: 'inactive',
-      workingHours: '40h/week'
-    },
-    {
-      id: '5',
-      name: 'Lisa Anderson',
-      email: 'l.anderson@acmedigital.com',
-      agency: 'Acme Digital',
-      systemRole: 'Resource Manager',
-      jobRole: 'QA Engineer',
-      rateCard: 'RC-005',
-      status: 'active',
-      workingHours: '40h/week'
-    },
-  ];
+  // Create form state
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [agencyId, setAgencyId] = useState('')
+  const [role, setRole] = useState('VIEWER')
+  const [saving, setSaving] = useState(false)
 
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesAgency = filterAgency === 'all' || user.agency === filterAgency;
-    const matchesGlobalAgency = selectedAgency === 'all' || user.agency === selectedAgency;
-    const matchesStatus = filterStatus === 'all' || user.status === filterStatus;
-    return matchesSearch && matchesAgency && matchesGlobalAgency && matchesStatus;
-  });
+  const agencyMap = useMemo(() => {
+    const m: Record<string, Agency> = {}
+    agencies.forEach((a) => { m[a._id] = a })
+    return m
+  }, [agencies])
 
-  const agencies = allAgencies;
+  const load = () => {
+    setLoading(true)
+    Promise.all([
+      api.get<{ data: User[] } | User[]>('/users'),
+      networkService.listAgencies(),
+    ]).then(([usersRes, ags]) => {
+      const users = Array.isArray(usersRes)
+        ? usersRes
+        : Array.isArray((usersRes as { data?: User[] }).data) ? (usersRes as { data: User[] }).data : []
+      setItems(users)
+      setAgencies(Array.isArray(ags) ? ags : [])
+    }).catch((e: Error) => toast.error(e.message ?? 'Failed to load users')).finally(() => setLoading(false))
+  }
+  useEffect(load, [])
+
+  const filtered = useMemo(() => {
+    const s = searchQuery.toLowerCase()
+    return items.filter((u) => {
+      const matchSearch = !s || u.name?.toLowerCase().includes(s) || u.email?.toLowerCase().includes(s)
+      const matchAgency = filterAgency === 'all' || u.agencyId === filterAgency
+      const isActive = u.active !== false && u.status !== 'INACTIVE'
+      const matchStatus = filterStatus === 'all' || (filterStatus === 'active' ? isActive : !isActive)
+      return matchSearch && matchAgency && matchStatus
+    })
+  }, [items, searchQuery, filterAgency, filterStatus])
+
+  const activeCount = items.filter((u) => u.active !== false && u.status !== 'INACTIVE').length
+
+  const handleCreate = async () => {
+    if (!name.trim() || !email.trim()) { toast.error('Name and email are required'); return }
+    if (!agencyId) { toast.error('Pick an agency'); return }
+    setSaving(true)
+    try {
+      await api.post('/users', { name: name.trim(), email: email.trim(), agencyId, role })
+      toast.success(`User "${name}" created.`)
+      setName(''); setEmail(''); setAgencyId(''); setRole('VIEWER'); setShowCreateDialog(false); load()
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to create user')
+    } finally { setSaving(false) }
+  }
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold text-gray-900">User Management</h1>
           <p className="text-gray-600 mt-1">Manage users, roles, and access control</p>
         </div>
-        <Button onClick={() => setShowCreateDialog(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Create User
-        </Button>
+        <Button onClick={() => setShowCreateDialog(true)} className="gap-2"><Plus className="w-4 h-4" /> Create User</Button>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm text-gray-600">Total Users</div>
-            <div className="text-2xl font-semibold text-gray-900 mt-1">1,247</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm text-gray-600">Active Users</div>
-            <div className="text-2xl font-semibold text-green-600 mt-1">1,189</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm text-gray-600">Inactive Users</div>
-            <div className="text-2xl font-semibold text-gray-500 mt-1">58</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="text-sm text-gray-600">Agencies</div>
-            <div className="text-2xl font-semibold text-gray-900 mt-1">23</div>
-          </CardContent>
-        </Card>
+        <Stat label="Total Users" value={items.length} />
+        <Stat label="Active Users" value={activeCount} valueClass="text-green-600" />
+        <Stat label="Inactive Users" value={items.length - activeCount} valueClass="text-gray-500" />
+        <Stat label="Agencies" value={agencies.length} />
       </div>
 
-      {/* Filters */}
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                placeholder="Search by name or email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
+              <Input placeholder="Search by name or email..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
             </div>
             <Select value={filterAgency} onValueChange={setFilterAgency}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Filter by Agency" />
-              </SelectTrigger>
+              <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Filter by Agency" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Agencies</SelectItem>
-                {agencies.map((agency) => (
-                  <SelectItem key={agency} value={agency}>{agency}</SelectItem>
-                ))}
+                {agencies.map((a) => <SelectItem key={a._id} value={a._id}>{a.name}</SelectItem>)}
               </SelectContent>
             </Select>
             <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-full md:w-48">
-                <SelectValue placeholder="Filter by Status" />
-              </SelectTrigger>
+              <SelectTrigger className="w-full md:w-48"><SelectValue placeholder="Filter by Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
@@ -204,168 +142,100 @@ export function UserManagement() {
         </CardContent>
       </Card>
 
-      {/* Users Table */}
       <Card>
-        <CardHeader>
-          <CardTitle>Users ({filteredUsers.length})</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Users ({filtered.length})</CardTitle></CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Agency</TableHead>
-                <TableHead>System Role</TableHead>
-                <TableHead>Job Role</TableHead>
-                <TableHead>Rate Card</TableHead>
-                <TableHead>Working Hours</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-12"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium text-gray-900">{user.name}</div>
-                      <div className="text-sm text-gray-500">{user.email}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{user.agency}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{user.systemRole}</Badge>
-                  </TableCell>
-                  <TableCell>{user.jobRole}</TableCell>
-                  <TableCell className="font-mono text-sm">{user.rateCard}</TableCell>
-                  <TableCell>{user.workingHours}</TableCell>
-                  <TableCell>
-                    <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
-                      {user.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
-                          <Edit className="w-4 h-4 mr-2" />
-                          Edit Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <FileText className="w-4 h-4 mr-2" />
-                          View Documents
-                        </DropdownMenuItem>
-                        {user.status === 'active' ? (
-                          <DropdownMenuItem className="text-red-600">
-                            <UserX className="w-4 h-4 mr-2" />
-                            Deactivate
-                          </DropdownMenuItem>
-                        ) : (
-                          <DropdownMenuItem className="text-green-600">
-                            <UserCheck className="w-4 h-4 mr-2" />
-                            Activate
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          {loading ? (
+            <div className="flex items-center justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-gray-400" /></div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-12 text-gray-500 space-y-2">
+              <UsersIcon className="w-10 h-10 mx-auto text-gray-300" />
+              <div>No users match. Try <strong>Create User</strong>.</div>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Agency</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="w-12"></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((u) => {
+                  const isActive = u.active !== false && u.status !== 'INACTIVE'
+                  return (
+                    <TableRow key={u._id}>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium text-gray-900">{u.name}</div>
+                          <div className="text-sm text-gray-500">{u.email}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{agencyMap[u.agencyId]?.name ?? '—'}</TableCell>
+                      <TableCell><Badge variant="outline">{u.role}</Badge></TableCell>
+                      <TableCell><Badge variant={isActive ? 'default' : 'secondary'}>{isActive ? 'active' : 'inactive'}</Badge></TableCell>
+                      <TableCell className="text-sm">{new Date(u.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild><Button variant="ghost" size="sm"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem><Edit className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
 
-      {/* Create User Dialog */}
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Create New User</DialogTitle>
-            <DialogDescription>
-              Add a new user to the platform and assign their roles and permissions
-            </DialogDescription>
+            <DialogTitle>Create User</DialogTitle>
+            <DialogDescription>Add a new user and assign them to an agency</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="space-y-2"><Label htmlFor="name">Full Name *</Label><Input id="name" placeholder="John Doe" value={name} onChange={(e) => setName(e.target.value)} /></div>
+            <div className="space-y-2"><Label htmlFor="email">Email *</Label><Input id="email" type="email" placeholder="user@agency.com" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
             <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input id="name" placeholder="Enter full name" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="user@agency.com" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="agency">Agency</Label>
-              <Select>
-                <SelectTrigger id="agency">
-                  <SelectValue placeholder="Select agency" />
-                </SelectTrigger>
+              <Label htmlFor="agency">Agency *</Label>
+              <Select value={agencyId} onValueChange={setAgencyId}>
+                <SelectTrigger id="agency"><SelectValue placeholder={agencies.length === 0 ? 'Create an agency first' : 'Select agency'} /></SelectTrigger>
                 <SelectContent>
-                  {agencies.map((agency) => (
-                    <SelectItem key={agency} value={agency}>{agency}</SelectItem>
-                  ))}
+                  {agencies.map((a) => <SelectItem key={a._id} value={a._id}>{a.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="systemRole">System Role</Label>
-              <Select>
-                <SelectTrigger id="systemRole">
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
+              <Label htmlFor="role">System Role</Label>
+              <Select value={role} onValueChange={setRole}>
+                <SelectTrigger id="role"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="manager">Resource Manager</SelectItem>
-                  <SelectItem value="pm">Project Manager</SelectItem>
-                  <SelectItem value="finance">Finance Controller</SelectItem>
+                  {SYSTEM_ROLES.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
                 </SelectContent>
               </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="jobRole">Job Role</Label>
-              <Select>
-                <SelectTrigger id="jobRole">
-                  <SelectValue placeholder="Select job role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="dev">Senior Developer</SelectItem>
-                  <SelectItem value="designer">UX Designer</SelectItem>
-                  <SelectItem value="pm">Product Manager</SelectItem>
-                  <SelectItem value="analyst">Data Analyst</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="rateCard">Rate Card</Label>
-              <Select>
-                <SelectTrigger id="rateCard">
-                  <SelectValue placeholder="Select rate card" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="rc1">RC-001 - Senior ($150/hr)</SelectItem>
-                  <SelectItem value="rc2">RC-002 - Mid ($100/hr)</SelectItem>
-                  <SelectItem value="rc3">RC-003 - Junior ($70/hr)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2 col-span-2">
-              <Label htmlFor="hours">Working Hours per Week</Label>
-              <Input id="hours" type="number" placeholder="40" />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => setShowCreateDialog(false)}>Create User</Button>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)} disabled={saving}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={saving}>{saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Create User</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  );
+  )
+}
+
+function Stat({ label, value, valueClass = 'text-gray-900' }: { label: string; value: number | string; valueClass?: string }) {
+  return (
+    <Card><CardContent className="p-4"><div className="text-sm text-gray-600">{label}</div><div className={`text-2xl font-semibold ${valueClass}`}>{value}</div></CardContent></Card>
+  )
 }

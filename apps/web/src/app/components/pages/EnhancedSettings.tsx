@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Input } from '@/app/components/ui/input';
@@ -85,9 +86,60 @@ export function EnhancedSettings() {
   const [auditRetention, setAuditRetention] = useState(365);
   const [detailedLogging, setDetailedLogging] = useState(true);
   const [exportAudits, setExportAudits] = useState(true);
-  
-  const handleSave = () => {
-    toast.success('Settings saved successfully!');
+
+  // Hydrate the form from the /settings bag on mount.
+  // Each key falls back to the hard-coded default if not yet set in DB.
+  useEffect(() => {
+    api.get<Record<string, unknown>>('/settings')
+      .then((s) => {
+        if (!s) return
+        const num = (k: string, d: number) => typeof s[k] === 'number' ? s[k] as number : d
+        const bool = (k: string, d: boolean) => typeof s[k] === 'boolean' ? s[k] as boolean : d
+        const str = (k: string, d: string) => typeof s[k] === 'string' ? s[k] as string : d
+        setAutoApprovalThreshold(num('autoApprovalThreshold', 5000))
+        setBorrowRequestExpiry(num('borrowRequestExpiry', 7))
+        setCapacityWarningThreshold(num('capacityWarningThreshold', 85))
+        setLowCapacityAlert(num('lowCapacityAlert', 60))
+        setMinMatchScore(num('minMatchScore', 70))
+        setAutoAssignThreshold(num('autoAssignThreshold', 90))
+        setBudgetWarningLevel(num('budgetWarningLevel', 80))
+        setBudgetCriticalLevel(num('budgetCriticalLevel', 95))
+        setMarginWarningThreshold(num('marginWarningThreshold', 15))
+        setRevenueLeakageAlert(num('revenueLeakageAlert', 10000))
+        setClientHealthCheckInterval(num('clientHealthCheckInterval', 30))
+        setEnableAIMatching(bool('enableAIMatching', true))
+        setEnablePredictivePlanning(bool('enablePredictivePlanning', true))
+        setAiConfidenceThreshold(num('aiConfidenceThreshold', 75))
+        setEmailNotifications(bool('emailNotifications', true))
+        setSlackNotifications(bool('slackNotifications', false))
+        setPushNotifications(bool('pushNotifications', true))
+        setDigestFrequency(str('digestFrequency', 'daily'))
+        setMfaRequired(bool('mfaRequired', false))
+        setPasswordExpiry(num('passwordExpiry', 90))
+        setSessionTimeout(num('sessionTimeout', 30))
+        setIpWhitelisting(bool('ipWhitelisting', false))
+        setAuditRetention(num('auditRetention', 365))
+        setDetailedLogging(bool('detailedLogging', true))
+        setExportAudits(bool('exportAudits', true))
+      })
+      .catch(() => {/* keep defaults */})
+  }, []);
+
+  const handleSave = async () => {
+    try {
+      await api.patch('/settings', {
+        autoApprovalThreshold, borrowRequestExpiry, capacityWarningThreshold, lowCapacityAlert,
+        minMatchScore, autoAssignThreshold, budgetWarningLevel, budgetCriticalLevel,
+        marginWarningThreshold, revenueLeakageAlert, clientHealthCheckInterval,
+        enableAIMatching, enablePredictivePlanning, aiConfidenceThreshold,
+        emailNotifications, slackNotifications, pushNotifications, digestFrequency,
+        mfaRequired, passwordExpiry, sessionTimeout, ipWhitelisting,
+        auditRetention, detailedLogging, exportAudits,
+      })
+      toast.success('Settings saved successfully!')
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save settings')
+    }
   };
 
   const handleReset = () => {

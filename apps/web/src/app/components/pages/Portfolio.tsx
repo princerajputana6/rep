@@ -374,41 +374,39 @@ export function Portfolio() {
     setLoading(true);
     setError(null);
     portfoliosApi.list().then(result => {
-      if (result.data && result.data.length > 0) {
-        const mapped: Portfolio[] = result.data.map(p => ({
-          id: p.id,
-          name: p.name,
-          description: p.description ?? '',
-          owner: p.owner,
-          status: (p.status as Portfolio['status']) ?? 'planning',
-          strategic: (p.strategicTheme as Portfolio['strategic']) ?? 'Growth',
-          totalBudget: p.budget ?? 0,
-          totalSpent: p.spent ?? 0,
-          startDate: p.startDate ?? '',
-          endDate: p.endDate ?? '',
-          shareableHours: Math.floor(Math.random() * 500),
-          unlockableRevenue: Math.floor(Math.random() * 50000),
-          programs: ((p as any).programs ?? []).map((pg: any) => ({
-            id: pg.id,
-            name: pg.name,
-            projectCount: 0,
-            budget: 0,
-            spent: 0,
-            health: pg.healthScore ?? 0,
-            status: (pg.status as PortfolioProgram['status']) ?? 'planning',
-            shareableHours: Math.floor(Math.random() * 100),
-            unlockableRevenue: Math.floor(Math.random() * 15000),
-          })),
-        }));
-        setPortfolios(mapped);
-      } else {
-        // Fallback to rich dummy data when API returns empty
-        setPortfolios(DUMMY_PORTFOLIOS);
-      }
-    }).catch(() => {
-      // Use dummy data on API error so page is always useful
-      setPortfolios(DUMMY_PORTFOLIOS);
-      setError(null);
+      const rows = result.data ?? []
+      const mapped: Portfolio[] = rows.map(p => ({
+        id: p.id,
+        name: p.name,
+        description: p.description ?? '',
+        owner: p.owner,
+        status: (p.status as Portfolio['status']) ?? 'planning',
+        strategic: (p.strategicTheme as Portfolio['strategic']) ?? 'Growth',
+        totalBudget: p.budget ?? 0,
+        totalSpent: p.spent ?? 0,
+        startDate: p.startDate ?? '',
+        endDate: p.endDate ?? '',
+        // shareableHours / unlockableRevenue need a real backend computation —
+        // until then they're zero rather than random.
+        shareableHours: 0,
+        unlockableRevenue: 0,
+        programs: ((p as any).programs ?? []).map((pg: any) => ({
+          id: pg.id,
+          name: pg.name,
+          projectCount: 0,
+          budget: 0,
+          spent: 0,
+          health: pg.healthScore ?? 0,
+          status: (pg.status as PortfolioProgram['status']) ?? 'planning',
+          shareableHours: 0,
+          unlockableRevenue: 0,
+        })),
+      }));
+      setPortfolios(mapped);
+    }).catch((e: Error) => {
+      // No silent dummy fallback — surface the real failure.
+      setError(e.message ?? 'Failed to load portfolios')
+      setPortfolios([])
     }).finally(() => {
       setLoading(false);
     });

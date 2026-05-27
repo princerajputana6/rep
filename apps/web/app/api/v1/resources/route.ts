@@ -14,7 +14,8 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get('search')
   const active = searchParams.get('active')
 
-  const filter: Record<string, unknown> = { agencyId: ctx.agencyId }
+  const agencyId = searchParams.get('agencyId') ?? ctx.agencyId
+  const filter: Record<string, unknown> = { agencyId }
   if (active !== null) filter.active = active !== 'false'
   if (search) filter.$or = [
     { name: { $regex: search, $options: 'i' } },
