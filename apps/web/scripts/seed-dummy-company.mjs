@@ -1,9 +1,9 @@
 // Seed a dummy company + Enterprise license + production environment +
-// COMPANY_ADMIN login, so the whole portal is reachable via password auth.
+// COMPANY_ADMIN login + sample content, so the whole portal is demoable.
 //
-//   node scripts/seed-dummy-company.mjs
+//   npm run seed:dummy
 //
-// Login afterwards at /superadmin/login with the printed credentials.
+// Sign in at /login with the printed credentials.
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -34,47 +34,37 @@ const ALL_MODULES = [
   'AUDIT_LOGS','ACCESS_RULES','RECYCLE_BIN','UI_CUSTOMIZATION','NOTIFICATIONS','CUSTOM_FORMS','SETTINGS',
 ]
 
-const S = mongoose.Schema
-const Company = mongoose.models.Company || mongoose.model('Company', new S({ name: String, slug: { type: String, unique: true }, adminEmail: String, adminName: String, tier: String, status: String, createdBy: String }, { timestamps: true }))
-const License = mongoose.models.License || mongoose.model('License', new S({ companyId: { type: String, unique: true }, tier: String, status: String, enabledModules: [String], maxUsers: Number, maxAgencies: Number, sandboxLimit: Number, seats: Number, validFrom: Date, validTo: Date, issuedBy: String, notes: String }, { timestamps: true }))
-const Environment = mongoose.models.Environment || mongoose.model('Environment', new S({ companyId: String, name: String, type: String, status: String, isDefault: Boolean, createdBy: String }, { timestamps: true }))
-const AdminUser = mongoose.models.AdminUser || mongoose.model('AdminUser', new S({ username: { type: String, unique: true }, email: { type: String, unique: true }, passwordHash: String, name: String, role: String, companyId: { type: String, default: null }, status: String, mustResetPassword: Boolean, lastLogin: Date, createdBy: String }, { timestamps: true }))
-
 async function main() {
   await mongoose.connect(process.env.MONGODB_URI)
-
-  let company = await Company.findOne({ adminEmail: EMAIL })
-  if (!company) {
-    company = await Company.create({ name: COMPANY, slug: USERNAME, adminEmail: EMAIL, adminName: 'Acme Admin', tier: 'ENTERPRISE', status: 'ACTIVE', createdBy: 'seed' })
-  }
-  const companyId = String(company._id)
-
-  await License.findOneAndUpdate(
-    { companyId },
-    { companyId, tier: 'ENTERPRISE', status: 'ACTIVE', enabledModules: ALL_MODULES, sandboxLimit: 10, issuedBy: 'seed', validFrom: new Date() },
-    { upsert: true }
-  )
-
-  const hasProd = await Environment.findOne({ companyId, type: 'PRODUCTION' })
-  if (!hasProd) {
-    await Environment.create({ companyId, name: 'Production', type: 'PRODUCTION', status: 'ACTIVE', isDefault: true, createdBy: 'seed' })
-  }
-
-  const passwordHash = await bcrypt.hash(PASSWORD, 10)
-  await AdminUser.findOneAndUpdate(
-    { username: USERNAME },
-    { username: USERNAME, email: EMAIL, passwordHash, name: 'Acme Admin', role: 'COMPANY_ADMIN', companyId, status: 'ACTIVE', mustResetPassword: false, createdBy: 'seed' },
-    { upsert: true }
-  )
-
-  // --- sample content so the portal isn't empty -----------------------------
   const db = mongoose.connection.db
-  const env = await Environment.findOne({ companyId, type: 'PRODUCTION' })
-  const environmentId = String(env._id)
+  const Companies = db.collection('companies')
+  const Licenses = db.collection('licenses')
+  const Environments = db.collection('environments')
+  const Users = db.collection('users')
   const Agencies = db.collection('agencies')
   const Projects = db.collection('projects')
   const Resources = db.collection('resources')
   const Clients = db.collection('clients')
+
+  let company = await Companies.findOne({ adminEmail: EMAIL })
+  if (!company) {
+    const r = await Companies.insertOne({ name: COMPANY, slug: USERNAME, adminEmail: EMAIL, adminName: 'Acme Admin', tier: 'ENTERPRISE', status: 'ACTIVE', createdBy: 'seed', createdAt: new Date(), updatedAt: new Date() })
+    company = { _id: r.insertedId }
+  }
+  const companyId = String(company._id)
+
+  await Licenses.updateOne(
+    { companyId },
+    { $set: { companyId, tier: 'ENTERPRISE', status: 'ACTIVE', enabledModules: ALL_MODULES, sandboxLimit: 10, issuedBy: 'seed', validFrom: new Date(), updatedAt: new Date() } },
+    { upsert: true }
+  )
+
+  let env = await Environments.findOne({ companyId, type: 'PRODUCTION' })
+  if (!env) {
+    const r = await Environments.insertOne({ companyId, name: 'Production', type: 'PRODUCTION', status: 'ACTIVE', isDefault: true, createdBy: 'seed', createdAt: new Date(), updatedAt: new Date() })
+    env = { _id: r.insertedId }
+  }
+  const environmentId = String(env._id)
 
   let agency = await Agencies.findOne({ companyId, name: 'Acme Creative' })
   if (!agency) {
@@ -83,10 +73,18 @@ async function main() {
   }
   const agencyId = agency._id // ObjectId
 
+  const passwordHash = await bcrypt.hash(PASSWORD, 10)
+  await Users.updateOne(
+    { username: USERNAME },
+    { $set: { username: USERNAME, email: EMAIL, passwordHash, name: 'Acme Admin', role: 'COMPANY_ADMIN', companyId, agencyId: null, environmentId, status: 'ACTIVE', mustResetPassword: false, updatedAt: new Date() }, $setOnInsert: { createdAt: new Date() } },
+    { upsert: true }
+  )
+
+  // --- sample content -------------------------------------------------------
   if (await Projects.countDocuments({ agencyId }) === 0) {
     const client = await Clients.insertOne({ name: 'Globex Corp', industry: 'Retail', agencyId: String(agencyId), status: 'ACTIVE', createdAt: new Date(), updatedAt: new Date() })
     const now = Date.now()
-    const projects = [
+    await Projects.insertMany([
       ['Brand Refresh 2026', 'ACTIVE', 120000, 68, 'low'],
       ['Q3 Campaign Launch', 'ACTIVE', 85000, 42, 'medium'],
       ['E-commerce Replatform', 'ACTIVE', 240000, 91, 'high'],
@@ -96,8 +94,7 @@ async function main() {
       budgetBurnPct: burn, healthScore: 90 - i * 8, deliveryConfidence: 85 - i * 6, riskLevel: risk,
       clientId: client.insertedId, agencyId, startDate: new Date(now - 60 * 864e5), endDate: new Date(now + 90 * 864e5),
       createdAt: new Date(), updatedAt: new Date(),
-    }))
-    await Projects.insertMany(projects)
+    })))
 
     const roles = ['Art Director', 'Copywriter', 'UX Designer', 'Developer', 'Account Manager']
     await Resources.insertMany(roles.map((role, i) => ({
@@ -110,11 +107,9 @@ async function main() {
 
   console.log('\n────────────────────────────────────────')
   console.log(`  Dummy company:  ${COMPANY} (ENTERPRISE, all modules)`)
-  console.log('  Company Admin login')
-  console.log('  URL:      /superadmin/login')
-  console.log(`  Username: ${USERNAME}`)
+  console.log('  Company Admin login  →  /login')
+  console.log(`  Username: ${USERNAME}   (or email: ${EMAIL})`)
   console.log(`  Password: ${PASSWORD}`)
-  console.log('  → admin console at /superadmin, full portal at /dashboard')
   console.log('────────────────────────────────────────\n')
 
   await mongoose.disconnect()

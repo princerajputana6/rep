@@ -10,10 +10,10 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "seed:superadmin": "node scripts/seed-superadmin.mjs",
-    "seed:dummy": "node scripts/seed-dummy-company.mjs"
+    "seed:dummy": "node scripts/seed-dummy-company.mjs",
+    "migrate:auth": "node scripts/migrate-local-auth.mjs"
   },
   "dependencies": {
-    "@clerk/nextjs": "^6.20.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^7.3.5",

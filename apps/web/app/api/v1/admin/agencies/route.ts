@@ -3,11 +3,11 @@ import connectDB from '@/lib/mongodb'
 import { Agency } from '@/lib/models/Agency'
 import { Environment } from '@/lib/models/Environment'
 import { License } from '@/lib/models/License'
-import { requireAdmin, isNextResponse } from '@/lib/auth/adminAuth'
+import { requireRole, isNextResponse } from '@/lib/auth/session'
 
 // COMPANY_ADMIN: agencies within their own company.
 export async function GET() {
-  const ctx = await requireAdmin('COMPANY_ADMIN')
+  const ctx = await requireRole('COMPANY_ADMIN')
   if (isNextResponse(ctx)) return ctx
   await connectDB()
   const agencies = await Agency.find({ companyId: ctx.companyId }).sort({ createdAt: -1 }).lean()
@@ -15,7 +15,7 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const ctx = await requireAdmin('COMPANY_ADMIN')
+  const ctx = await requireRole('COMPANY_ADMIN')
   if (isNextResponse(ctx)) return ctx
   await connectDB()
   const body = await req.json().catch(() => ({}))
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     ownerEmail: body.ownerEmail?.toLowerCase().trim() || undefined,
     participationLevel: body.participationLevel ?? 'full',
     status: 'ACTIVE',
-    createdBy: ctx.adminId,
+    createdBy: ctx.userId,
   })
 
   return NextResponse.json({ success: true, data: agency }, { status: 201 })

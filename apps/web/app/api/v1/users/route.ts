@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import { User } from '@/lib/models/User'
+import { hashPassword, generateTempPassword } from '@/lib/auth/session'
 import { ok, err, requireAuth, isNextResponse } from '@/lib/api-helpers'
 
 export async function GET(req: NextRequest) {
@@ -35,17 +36,32 @@ export async function POST(req: NextRequest) {
   await connectDB()
   const body = await req.json()
 
-  const existing = await User.findOne({ email: body.email })
+  const email = String(body.email ?? '').toLowerCase().trim()
+  if (!email) return err('Email is required', 'VALIDATION', 400)
+
+  const existing = await User.findOne({ email })
   if (existing) return err('User with this email already exists', 'CONFLICT', 409)
 
+  // Username derived from the email local-part, de-duplicated.
+  const base = email.split('@')[0].replace(/[^a-z0-9._-]+/g, '') || 'user'
+  let username = base
+  let n = 1
+  while (await User.exists({ username })) username = `${base}${++n}`
+
+  const tempPassword = generateTempPassword()
   const user = await User.create({
-    clerkId: body.clerkId ?? `manual_${Date.now()}`,
-    email: body.email,
+    username,
+    email,
+    passwordHash: await hashPassword(tempPassword),
     name: body.name,
     role: body.role ?? 'VIEWER',
+    companyId: ctx.companyId ?? null,
     agencyId: ctx.agencyId,
-    status: 'active',
+    status: 'INVITED',
+    mustResetPassword: true,
+    createdBy: ctx.userId,
   })
 
-  return ok(user, 201)
+  const { passwordHash: _omit, ...safe } = user.toObject()
+  return ok({ ...safe, credentials: { username, tempPassword } }, 201)
 }

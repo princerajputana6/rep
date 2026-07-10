@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import { Environment } from '@/lib/models/Environment'
 import { License } from '@/lib/models/License'
-import { requireAdmin, isNextResponse } from '@/lib/auth/adminAuth'
+import { requireRole, isNextResponse } from '@/lib/auth/session'
 
 // COMPANY_ADMIN: environments for their company (1 production + N sandboxes).
 export async function GET() {
-  const ctx = await requireAdmin('COMPANY_ADMIN')
+  const ctx = await requireRole('COMPANY_ADMIN')
   if (isNextResponse(ctx)) return ctx
   await connectDB()
   const environments = await Environment.find({ companyId: ctx.companyId }).sort({ createdAt: 1 }).lean()
@@ -26,7 +26,7 @@ export async function GET() {
 // Create a sandbox. The first sandbox is included; beyond the license
 // sandboxLimit the company must upgrade / purchase more.
 export async function POST(req: NextRequest) {
-  const ctx = await requireAdmin('COMPANY_ADMIN')
+  const ctx = await requireRole('COMPANY_ADMIN')
   if (isNextResponse(ctx)) return ctx
   await connectDB()
   const body = await req.json().catch(() => ({}))
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     type: 'SANDBOX',
     status: 'ACTIVE',
     isDefault: false,
-    createdBy: ctx.adminId,
+    createdBy: ctx.userId,
   })
 
   return NextResponse.json({ success: true, data: environment }, { status: 201 })

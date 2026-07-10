@@ -1,44 +1,49 @@
 import mongoose, { Schema, Document, Model } from 'mongoose'
 
+// Single principal table for the whole platform. Everyone — super admins,
+// company admins and regular team members — logs in here with
+// email-or-username + password. No external identity provider.
+export const ROLES = ['SUPER_ADMIN', 'COMPANY_ADMIN', 'MANAGER', 'MEMBER', 'VIEWER'] as const
+export type UserRole = (typeof ROLES)[number]
+
 export interface IUser extends Document {
-  clerkId?: string | null              // null until the invited user activates via Clerk
+  username: string
   email: string
+  passwordHash: string
   name: string
-  role: string
-  companyId?: string                   // owning licensed company
-  agencyId: string
-  environmentId?: string | null        // which environment this user belongs to
-  // 'invited'  -> pre-created by an admin, has NOT yet signed in via Clerk
-  // 'active'   -> claimed a Clerk account
-  // 'disabled' -> access revoked
-  status: string
-  invitedBy?: string | null
-  invitedAt?: Date | null
-  lastLogin?: Date
+  role: UserRole
+  companyId?: string | null       // null for SUPER_ADMIN
+  agencyId?: string | null        // null for SUPER_ADMIN / COMPANY_ADMIN
+  environmentId?: string | null
+  status: 'ACTIVE' | 'INVITED' | 'DISABLED'
+  mustResetPassword: boolean
+  lastLogin?: Date | null
+  createdBy?: string | null
   createdAt: Date
   updatedAt: Date
 }
 
 const UserSchema = new Schema<IUser>(
   {
-    // sparse unique: many invited users can share `null` before activation
-    clerkId: { type: String, default: null, unique: true, sparse: true },
+    username: { type: String, required: true, unique: true, lowercase: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    passwordHash: { type: String, required: true },
     name: { type: String, required: true },
-    role: { type: String, default: 'VIEWER' },
-    companyId: { type: String },
-    agencyId: { type: String, required: true },
+    role: { type: String, enum: ROLES, default: 'VIEWER' },
+    companyId: { type: String, default: null },
+    agencyId: { type: String, default: null },
     environmentId: { type: String, default: null },
-    status: { type: String, default: 'invited' },
-    invitedBy: { type: String, default: null },
-    invitedAt: { type: Date, default: null },
-    lastLogin: { type: Date },
+    status: { type: String, enum: ['ACTIVE', 'INVITED', 'DISABLED'], default: 'ACTIVE' },
+    mustResetPassword: { type: Boolean, default: false },
+    lastLogin: { type: Date, default: null },
+    createdBy: { type: String, default: null },
   },
   { timestamps: true }
 )
 
-UserSchema.index({ agencyId: 1 })
 UserSchema.index({ companyId: 1 })
+UserSchema.index({ agencyId: 1 })
+UserSchema.index({ role: 1 })
 UserSchema.index({ status: 1 })
 
 export const User: Model<IUser> =

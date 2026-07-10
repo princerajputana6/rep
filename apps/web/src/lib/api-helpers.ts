@@ -1,14 +1,12 @@
 import { NextResponse } from 'next/server'
 import connectDB from './mongodb'
-import { User } from './models/User'
 import { Agency } from './models/Agency'
-import { getAdminSession } from './auth/adminAuth'
+import { getSession } from './auth/session'
 
 export interface AuthContext {
   userId: string
   agencyId: string
   role: string
-  clerkUserId: string
   companyId?: string | null
 }
 
@@ -20,46 +18,32 @@ export function err(message: string, code = 'ERROR', status = 400) {
   return NextResponse.json({ success: false, error: { code, message } }, { status })
 }
 
-// Resolves the caller for data APIs. Accepts EITHER an admin password session
-// (SUPER_ADMIN / COMPANY_ADMIN) or a provisioned Clerk user. Never calls Clerk
-// unless it's actually configured, so admin-only deployments don't throw.
+// Zero ObjectId: casts cleanly for ObjectId-typed agency fields and matches
+// nothing, so users without an agency get empty results instead of a cast 500.
+const NO_AGENCY = '000000000000000000000000'
+
 export async function getAuthContext(): Promise<AuthContext | null> {
+  const session = await getSession()
+  if (!session || session.mustResetPassword) return null
+
   await connectDB()
 
-  // 1) Admin password session — admins operate the whole portal.
-  const admin = await getAdminSession()
-  if (admin && !admin.mustResetPassword) {
-    // Zero ObjectId: casts cleanly for ObjectId-typed agency fields and matches
-    // nothing, so agency-less admins get empty results instead of a cast 500.
-    let agencyId = '000000000000000000000000'
-    if (admin.companyId) {
-      const ag = await Agency.findOne({ companyId: admin.companyId }).select('_id').lean()
-      if (ag) agencyId = String(ag._id)
-    }
-    return {
-      userId: admin.adminId,
-      agencyId,
-      role: admin.role,
-      clerkUserId: '',
-      companyId: admin.companyId ?? null,
+  let agencyId = session.agencyId || ''
+  if (!agencyId) {
+    // Admins aren't bound to a single agency — fall back to their company's first.
+    if (session.companyId) {
+      const ag = await Agency.findOne({ companyId: session.companyId }).select('_id').lean()
+      agencyId = ag ? String(ag._id) : NO_AGENCY
+    } else {
+      agencyId = NO_AGENCY
     }
   }
 
-  // 2) Clerk user — only when Clerk is configured.
-  if (!process.env.CLERK_SECRET_KEY) return null
-  const { auth } = await import('@clerk/nextjs/server')
-  const { userId: clerkUserId } = await auth()
-  if (!clerkUserId) return null
-
-  const user = await User.findOne({ clerkId: clerkUserId })
-  if (!user) return null
-
   return {
-    userId: String(user._id),
-    agencyId: user.agencyId,
-    role: user.role,
-    clerkUserId,
-    companyId: user.companyId ?? null,
+    userId: session.userId,
+    agencyId,
+    role: session.role,
+    companyId: session.companyId ?? null,
   }
 }
 

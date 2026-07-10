@@ -17,35 +17,27 @@ interface AuthContextValue {
   isAuthenticated: boolean
   isLoading: boolean
   error: string | null
-  login: (email: string, password: string) => Promise<void>
+  login: (identifier: string, password: string) => Promise<void>
   logout: () => Promise<void>
   clearError: () => void
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-// Identity now comes from the unified /api/v1/auth/session endpoint, which
-// accepts either an admin password session or a provisioned Clerk user. This
-// keeps the portal usable by admins even when Clerk isn't configured.
+// Identity comes from our own session cookie via /api/v1/auth/me.
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [kind, setKind] = useState<'admin' | 'clerk' | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     let active = true
-    fetch('/api/v1/auth/session')
+    fetch('/api/v1/auth/me')
       .then((r) => r.json())
       .then((json) => {
         if (!active) return
-        if (json?.success && json.data?.authenticated) {
-          setUser(json.data.user)
-          setKind(json.data.kind)
-        } else {
-          setUser(null)
-          setKind(null)
-        }
+        setUser(json?.data?.authenticated ? json.data.user : null)
       })
       .catch(() => active && setUser(null))
       .finally(() => active && setIsLoading(false))
@@ -54,28 +46,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // Mirror the user to localStorage so non-context consumers (e.g. the Sidebar's
-  // role-gated section) can read role synchronously.
+  // Mirror to localStorage so non-context consumers can read role synchronously.
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (user) localStorage.setItem('rep_user', JSON.stringify(user))
     else localStorage.removeItem('rep_user')
   }, [user])
 
-  const login = async () => {
-    router.push('/sign-in')
+  const login = async (identifier: string, password: string) => {
+    setError(null)
+    const res = await fetch('/api/v1/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier, password }),
+    })
+    const json = await res.json()
+    if (!res.ok || !json.success) {
+      setError(json?.error?.message ?? 'Sign in failed')
+      return
+    }
+    router.replace(json.data.redirectTo ?? '/dashboard')
   }
 
   const logout = async () => {
-    if (kind === 'admin') {
-      await fetch('/api/v1/admin/auth/logout', { method: 'POST' }).catch(() => {})
-      setUser(null)
-      router.push('/superadmin/login')
-      return
-    }
-    // Clerk users: hand off to the Clerk sign-out page.
+    await fetch('/api/v1/auth/logout', { method: 'POST' }).catch(() => {})
     setUser(null)
-    router.push('/sign-in')
+    router.replace('/login')
   }
 
   return (
@@ -85,10 +81,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         token: null,
         isAuthenticated: !!user,
         isLoading,
-        error: null,
+        error,
         login,
         logout,
-        clearError: () => {},
+        clearError: () => setError(null),
       }}
     >
       {children}

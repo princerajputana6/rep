@@ -46,16 +46,20 @@ export default function AdminConsole() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api('/auth/me').then((r) => {
-      if (!r.ok) { router.replace('/superadmin/login'); return }
-      setMe(r.data)
-      setLoading(false)
-    })
+    fetch('/api/v1/auth/me')
+      .then((r) => r.json())
+      .then((json) => {
+        if (!json?.data?.authenticated) { router.replace('/login'); return }
+        const { user, company, license } = json.data
+        setMe({ ...user, company, license })
+        setLoading(false)
+      })
+      .catch(() => router.replace('/login'))
   }, [router])
 
   async function logout() {
-    await api('/auth/logout', { method: 'POST' })
-    router.replace('/superadmin/login')
+    await fetch('/api/v1/auth/logout', { method: 'POST' }).catch(() => {})
+    router.replace('/login')
   }
 
   if (loading || !me) {
@@ -304,7 +308,7 @@ function UsersPanel() {
               <TableCell sx={{ fontWeight: 700, color: DARK }}>{u.name}</TableCell>
               <TableCell sx={{ color: '#637381' }}>{u.email}</TableCell>
               <TableCell sx={{ color: '#637381' }}>{u.role}</TableCell>
-              <TableCell><Chip label={u.status} size="small" sx={{ fontWeight: 700, color: u.status === 'active' ? '#118D57' : '#B76E00', bgcolor: u.status === 'active' ? '#D3FCD2' : '#FFF5CC' }} /></TableCell>
+              <TableCell><Chip label={u.status} size="small" sx={{ fontWeight: 700, color: u.status === 'ACTIVE' ? '#118D57' : '#B76E00', bgcolor: u.status === 'ACTIVE' ? '#D3FCD2' : '#FFF5CC' }} /></TableCell>
             </TableRow>
           ))}
         </TableBody>
