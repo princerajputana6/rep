@@ -208,7 +208,7 @@ function DrillDownBar({ portfolio, setPortfolio, program, setProgram, project, s
       {/* Project */}
       <Select value={project} onValueChange={v => { setProject(v); setTask('all'); }} disabled={portfolio === 'all' && program === 'all'}>
         <SelectTrigger className={`h-7 text-xs w-auto min-w-[160px] border-blue-200 bg-white ${portfolio === 'all' && program === 'all' ? 'opacity-50' : ''}`}>
-          <FolderKanban className="w-3 h-3 mr-1 text-indigo-400 flex-shrink-0" /><SelectValue placeholder="All Projects" />
+          <FolderKanban className="w-3 h-3 mr-1 text-primary flex-shrink-0" /><SelectValue placeholder="All Projects" />
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">All Projects</SelectItem>
@@ -645,9 +645,9 @@ export function FinancialDashboard() {
             if (!assignments.length) return <p className="text-xs text-gray-500 pl-1">No assignment data for this task.</p>;
             const totalCost = assignments.reduce((s, a) => s + a.cost, 0);
             return (
-              <Card className="border-indigo-200">
+              <Card className="border-primary/30">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2 text-indigo-700">
+                  <CardTitle className="text-sm flex items-center gap-2 text-primary">
                     <Users className="w-4 h-4" />
                     Assignments — {taskName}
                   </CardTitle>
@@ -656,9 +656,9 @@ export function FinancialDashboard() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b bg-indigo-50/60">
+                        <tr className="border-b bg-accent/60">
                           {['Resource','Role','Hours','Rate/hr','Cost','Billed Hours','Utilisation'].map(h => (
-                            <th key={h} className="text-left py-2.5 px-4 text-xs font-semibold text-indigo-700 uppercase tracking-wide whitespace-nowrap">{h}</th>
+                            <th key={h} className="text-left py-2.5 px-4 text-xs font-semibold text-primary uppercase tracking-wide whitespace-nowrap">{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -668,25 +668,25 @@ export function FinancialDashboard() {
                           return (
                             <tr key={a.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
                               <td className="py-2.5 px-4 font-medium text-gray-900 flex items-center gap-1.5">
-                                <Users className="w-3.5 h-3.5 text-indigo-300" />{a.resource}
+                                <Users className="w-3.5 h-3.5 text-primary/40" />{a.resource}
                               </td>
                               <td className="py-2.5 px-4 text-xs text-gray-500">{a.role}</td>
                               <td className="py-2.5 px-4 text-gray-700">{a.hours}h</td>
                               <td className="py-2.5 px-4 text-gray-700">${a.ratePerHour}</td>
-                              <td className="py-2.5 px-4 font-medium text-indigo-600">{fmt(a.cost)}</td>
+                              <td className="py-2.5 px-4 font-medium text-primary">{fmt(a.cost)}</td>
                               <td className="py-2.5 px-4 text-gray-600">{a.billedHours}h</td>
                               <td className="py-2.5 px-4">
                                 <div className="flex items-center gap-2">
-                                  <Progress value={Math.min(100, utilPct)} className={`h-1.5 w-16 ${utilPct > 105 ? '[&>div]:bg-red-500' : '[&>div]:bg-indigo-500'}`} />
+                                  <Progress value={Math.min(100, utilPct)} className={`h-1.5 w-16 ${utilPct > 105 ? '[&>div]:bg-red-500' : '[&>div]:bg-accent0'}`} />
                                   <span className={`text-xs font-semibold ${utilPct > 105 ? 'text-red-600' : 'text-gray-600'}`}>{utilPct.toFixed(0)}%</span>
                                 </div>
                               </td>
                             </tr>
                           );
                         })}
-                        <tr className="bg-indigo-50/40">
-                          <td colSpan={4} className="py-2.5 px-4 text-xs font-semibold text-indigo-700">Total</td>
-                          <td className="py-2.5 px-4 font-bold text-indigo-700">{fmt(totalCost)}</td>
+                        <tr className="bg-accent/40">
+                          <td colSpan={4} className="py-2.5 px-4 text-xs font-semibold text-primary">Total</td>
+                          <td className="py-2.5 px-4 font-bold text-primary">{fmt(totalCost)}</td>
                           <td colSpan={2} />
                         </tr>
                       </tbody>

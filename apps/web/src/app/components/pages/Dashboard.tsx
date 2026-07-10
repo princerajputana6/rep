@@ -216,7 +216,7 @@ export function Dashboard() {
           { label: 'Total Resources', value: String(kpis.totalResources), sub: 'Active resources', Icon: Users, iconColor: 'text-purple-600' },
           { label: 'Avg Utilization', value: `${kpis.avgUtilization}%`, sub: 'Target 80%', Icon: TrendingUp, iconColor: kpis.avgUtilization >= 80 ? 'text-green-600' : 'text-amber-600' },
           { label: 'Team Members', value: String(kpis.totalUsers), sub: 'Platform users', Icon: Building2, iconColor: 'text-blue-600' },
-          { label: 'Borrow Requests', value: String(kpis.pendingBorrowRequests), sub: 'Pending review', Icon: Zap, iconColor: 'text-indigo-600' },
+          { label: 'Borrow Requests', value: String(kpis.pendingBorrowRequests), sub: 'Pending review', Icon: Zap, iconColor: 'text-primary' },
         ].map(k => <KpiCard key={k.label} {...k} />)}
       </div>
 

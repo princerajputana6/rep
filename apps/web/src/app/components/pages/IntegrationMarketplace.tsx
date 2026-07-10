@@ -298,7 +298,7 @@ export function IntegrationMarketplace() {
 
   const colorClasses: Record<string, string> = {
     blue: 'bg-blue-500',
-    indigo: 'bg-indigo-500',
+    indigo: 'bg-accent0',
     purple: 'bg-purple-500',
     green: 'bg-green-500',
     orange: 'bg-orange-500',

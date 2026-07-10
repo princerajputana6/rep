@@ -298,7 +298,7 @@ function ProgramCard({
               const projHc = healthColor(proj.health);
               return (
                 <div key={proj.id} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 text-xs">
-                  <FolderKanban className="w-3.5 h-3.5 text-indigo-400 flex-shrink-0" />
+                  <FolderKanban className="w-3.5 h-3.5 text-primary flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
                       <div className="flex items-center gap-1 min-w-0">
@@ -515,7 +515,7 @@ export function ProgramManagement() {
         {[
           { label: 'Programs', value: kpis.totalPrograms, Icon: Layers, color: 'text-purple-600', bg: 'bg-purple-50' },
           { label: 'Active', value: kpis.active, Icon: Activity, color: 'text-green-600', bg: 'bg-green-50' },
-          { label: 'Total Projects', value: kpis.totalProjects, Icon: FolderKanban, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+          { label: 'Total Projects', value: kpis.totalProjects, Icon: FolderKanban, color: 'text-primary', bg: 'bg-accent' },
           { label: 'At Risk', value: kpis.atRisk, Icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50' },
           { label: 'Total Budget', value: fmt(kpis.totalBudget), Icon: DollarSign, color: 'text-blue-600', bg: 'bg-blue-50' },
         ].map(({ label, value, Icon, color, bg }) => (

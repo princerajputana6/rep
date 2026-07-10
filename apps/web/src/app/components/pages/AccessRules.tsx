@@ -21,8 +21,8 @@ const ROLE_META: Record<string, { label: string; description: string; color: str
   AGENCY_OWNER: {
     label: 'Agency Owner',
     description: 'Full administrative control over the agency',
-    color: 'text-violet-700',
-    bg: 'bg-violet-50 border-violet-200',
+    color: 'text-primary',
+    bg: 'bg-accent border-primary/30',
   },
   RESOURCE_MANAGER: {
     label: 'Resource Manager',
@@ -206,7 +206,7 @@ function RolePanel({
           <p className="text-xs text-gray-500 mt-0.5">{meta.description}</p>
         </div>
         {isOwner && (
-          <span className="flex items-center gap-1 text-xs text-violet-600 bg-violet-100 px-2 py-1 rounded-full font-medium">
+          <span className="flex items-center gap-1 text-xs text-primary bg-accent px-2 py-1 rounded-full font-medium">
             <Info className="w-3 h-3" />
             Always full access
           </span>
@@ -357,7 +357,7 @@ export function AccessRules() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <Shield className="w-6 h-6 text-violet-600" />
+            <Shield className="w-6 h-6 text-primary" />
             Access Rules
           </h1>
           <p className="text-sm text-gray-500 mt-1">
@@ -376,7 +376,7 @@ export function AccessRules() {
           <button
             onClick={handleSave}
             disabled={!hasDirty || saving}
-            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-violet-600 rounded-lg hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+            className="flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-white bg-primary rounded-lg hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
           >
             <Save className="w-4 h-4" />
             {saving ? 'Saving…' : 'Save Changes'}
@@ -415,7 +415,7 @@ export function AccessRules() {
                   onClick={() => setActiveRole(role)}
                   className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-colors
                     ${activeRole === role
-                      ? `border-violet-600 ${meta.color} bg-white`
+                      ? `border-primary ${meta.color} bg-white`
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                     }`}
                 >

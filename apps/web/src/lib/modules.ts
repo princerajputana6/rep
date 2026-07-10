@@ -76,25 +76,52 @@ export const MODULE_GROUPS = [
   'finance', 'intelligence', 'ai', 'integrations', 'admin',
 ] as const
 
-// Default module sets per plan tier.
+// ---------------------------------------------------------------------------
+// License tiers (customer-facing). Super Admin issues one of these per company.
+//   PRIME      – core resource & delivery management (basic feature set)
+//   ULTIMATE   – PRIME + finance, analytics, API access & 3rd-party integrations
+//   ENTERPRISE – everything, incl. AI + custom development modules
+// ---------------------------------------------------------------------------
+export const PLAN_TIERS = ['PRIME', 'ULTIMATE', 'ENTERPRISE'] as const
+export type PlanTier = (typeof PLAN_TIERS)[number]
+
+export const PLAN_LABELS: Record<PlanTier, string> = {
+  PRIME: 'Prime',
+  ULTIMATE: 'Ultimate',
+  ENTERPRISE: 'Enterprise',
+}
+
+const PRIME_MODULES: ModuleKey[] = [
+  'HOME', 'DASHBOARD', 'AGENCIES', 'PROJECTS', 'TASKS', 'ASSIGNMENTS', 'TIMESHEETS',
+  'USERS', 'JOB_ROLES', 'RATE_CARDS', 'PORTFOLIOS', 'PROGRAMS', 'CLIENT_MASTER',
+  'BORROW_REQUESTS', 'APPROVALS', 'RESOURCE_POOLS', 'STAFFING_PLANNER',
+  'NOTIFICATIONS', 'AUDIT_LOGS', 'SETTINGS',
+]
+
+const ULTIMATE_MODULES: ModuleKey[] = [
+  ...PRIME_MODULES,
+  'SUB_AGENCIES', 'TIE_UPS', 'CLIENT_PROFITABILITY', 'CURRENCY_MAPPING',
+  'FINANCIALS', 'BUDGET_ALERTS', 'CAPACITY', 'HIDDEN_CAPACITY', 'KPI_REPORTS', 'ANALYTICS',
+  // API access & integrations are the headline of the Ultimate tier
+  'INTEGRATIONS_CORE', 'INTEGRATIONS_WORKFRONT', 'INTEGRATIONS_CLICKUP',
+  'WEBHOOKS', 'API_KEYS', 'ACCESS_RULES', 'CUSTOM_FORMS', 'UI_CUSTOMIZATION',
+]
+
+// Default module sets per license tier. Typed as Record<string, …> and carrying
+// legacy tier aliases (FREE/STARTER/PRO) so older subscription code keeps working.
 export const PLAN_DEFAULTS: Record<string, ModuleKey[]> = {
-  FREE: ['HOME', 'DASHBOARD', 'PROJECTS', 'TASKS', 'USERS', 'NOTIFICATIONS', 'SETTINGS'],
-  STARTER: [
-    'HOME', 'DASHBOARD', 'AGENCIES', 'PROJECTS', 'TASKS', 'ASSIGNMENTS', 'TIMESHEETS',
-    'USERS', 'JOB_ROLES', 'RATE_CARDS', 'PORTFOLIOS', 'PROGRAMS', 'CLIENT_MASTER',
-    'BORROW_REQUESTS', 'APPROVALS', 'NOTIFICATIONS', 'AUDIT_LOGS', 'SETTINGS',
-  ],
-  PRO: [
-    ...['HOME', 'DASHBOARD', 'AGENCIES', 'SUB_AGENCIES', 'TIE_UPS', 'RESOURCE_POOLS',
-    'PROJECTS', 'TASKS', 'ASSIGNMENTS', 'TIMESHEETS', 'STAFFING_PLANNER',
-    'USERS', 'JOB_ROLES', 'RATE_CARDS', 'PORTFOLIOS', 'PROGRAMS',
-    'CLIENT_MASTER', 'CLIENT_PROFITABILITY', 'CURRENCY_MAPPING',
-    'BORROW_REQUESTS', 'APPROVALS', 'FINANCIALS', 'BUDGET_ALERTS',
-    'CAPACITY', 'HIDDEN_CAPACITY', 'KPI_REPORTS',
-    'INTEGRATIONS_CORE', 'INTEGRATIONS_WORKFRONT', 'INTEGRATIONS_CLICKUP',
-    'WEBHOOKS', 'API_KEYS', 'NOTIFICATIONS', 'AUDIT_LOGS', 'ACCESS_RULES',
-    'CUSTOM_FORMS', 'UI_CUSTOMIZATION', 'SETTINGS',
-    ] as ModuleKey[],
-  ],
-  ENTERPRISE: MODULE_KEYS, // everything
+  PRIME: PRIME_MODULES,
+  ULTIMATE: Array.from(new Set(ULTIMATE_MODULES)) as ModuleKey[],
+  ENTERPRISE: MODULE_KEYS, // everything, incl. AI + custom development
+  // --- legacy aliases (pre Prime/Ultimate/Enterprise naming) ---
+  FREE: PRIME_MODULES,
+  STARTER: PRIME_MODULES,
+  PRO: Array.from(new Set(ULTIMATE_MODULES)) as ModuleKey[],
+}
+
+// Sandbox environments included per tier before an upgrade/purchase is required.
+export const SANDBOX_ALLOWANCE: Record<PlanTier, number> = {
+  PRIME: 1,
+  ULTIMATE: 3,
+  ENTERPRISE: 10,
 }

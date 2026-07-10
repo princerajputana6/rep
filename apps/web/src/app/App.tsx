@@ -140,9 +140,9 @@ function AppContent() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50">
+      <div className="flex h-screen items-center justify-center bg-muted">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 rounded-full border-4 border-indigo-200 border-t-indigo-600 animate-spin" />
+          <div className="w-10 h-10 rounded-full border-4 border-primary/30 border-t-primary animate-spin" />
           <p className="text-sm text-gray-500">Loading REP Platform…</p>
         </div>
       </div>

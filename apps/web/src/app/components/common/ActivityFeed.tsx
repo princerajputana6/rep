@@ -120,7 +120,7 @@ const getActivityIcon = (type: ActivityItem['type']) => {
     case 'comment':
       return <MessageSquare className="w-4 h-4 text-purple-600" />;
     case 'assignment':
-      return <ArrowLeftRight className="w-4 h-4 text-indigo-600" />;
+      return <ArrowLeftRight className="w-4 h-4 text-primary" />;
     default:
       return <Clock className="w-4 h-4 text-gray-600" />;
   }
@@ -141,7 +141,7 @@ const getActivityColor = (type: ActivityItem['type']) => {
     case 'comment':
       return 'bg-purple-50 border-purple-200';
     case 'assignment':
-      return 'bg-indigo-50 border-indigo-200';
+      return 'bg-accent border-primary/30';
     default:
       return 'bg-gray-50 border-gray-200';
   }

@@ -14,11 +14,19 @@
     "lint": "npm run lint -w @rep/web",
     "type-check": "npm run type-check -w @rep/web"
   },
-  "keywords": ["resource-management", "platform", "b2b", "engagement"],
+  "keywords": [
+    "resource-management",
+    "platform",
+    "b2b",
+    "engagement"
+  ],
   "author": "Engineering Team",
   "license": "MIT",
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=10.0.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6"
   }
 }

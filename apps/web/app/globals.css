@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 @import 'tailwindcss' source(none);
 @source '../src/**/*.{js,ts,jsx,tsx}';
 @source '../app/**/*.{js,ts,jsx,tsx}';
@@ -6,85 +7,113 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ---------------------------------------------------------------------------
+   REP Platform — "Minimal" design language (minimals.cc inspired)
+   Green #00A76F accent · Public Sans · rounded cards · soft diffuse shadows
+--------------------------------------------------------------------------- */
 :root {
-  --font-size: 16px;
+  --font-size: 15px;
+  --font-sans: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
   --background: #ffffff;
-  --foreground: oklch(0.145 0 0);
+  --foreground: #1c252e;               /* text.primary */
   --card: #ffffff;
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: #030213;
-  --primary-foreground: oklch(1 0 0);
-  --secondary: oklch(0.95 0.0058 264.53);
-  --secondary-foreground: #030213;
-  --muted: #ececf0;
-  --muted-foreground: #717182;
-  --accent: #e9ebef;
-  --accent-foreground: #030213;
-  --destructive: #d4183d;
+  --card-foreground: #1c252e;
+  --popover: #ffffff;
+  --popover-foreground: #1c252e;
+
+  --primary: #00a76f;                  /* brand green */
+  --primary-foreground: #ffffff;
+  --secondary: #f4f6f8;                /* grey.100 */
+  --secondary-foreground: #1c252e;
+  --muted: #f4f6f8;
+  --muted-foreground: #637381;         /* text.secondary */
+  --accent: #dffaee;                   /* primary.lighter mint */
+  --accent-foreground: #007867;        /* primary.dark */
+  --destructive: #ff5630;              /* error.main */
   --destructive-foreground: #ffffff;
-  --border: rgba(0, 0, 0, 0.1);
-  --input: transparent;
-  --input-background: #f3f3f5;
+
+  --border: rgba(145, 158, 171, 0.2);  /* grey with alpha */
+  --input: rgba(145, 158, 171, 0.32);
+  --input-background: #ffffff;
   --switch-background: #cbced4;
-  --font-weight-medium: 500;
+  --font-weight-medium: 600;
   --font-weight-normal: 400;
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: #030213;
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --ring: #00a76f;
+
+  /* Minimal chart palette: green / blue / purple / amber / red */
+  --chart-1: #00a76f;
+  --chart-2: #00b8d9;
+  --chart-3: #8e33ff;
+  --chart-4: #ffab00;
+  --chart-5: #ff5630;
+
+  --radius: 0.75rem;                   /* 12px base; cards read as 16px */
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1c252e;
+  --sidebar-primary: #00a76f;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(0, 167, 111, 0.08);
+  --sidebar-accent-foreground: #007867;
+  --sidebar-border: rgba(145, 158, 171, 0.2);
+  --sidebar-ring: #00a76f;
+
+  /* Status tokens (chips/badges) */
+  --success: #22c55e;
+  --success-bg: #d3fcd2;
+  --success-fg: #118d57;
+  --warning: #ffab00;
+  --warning-bg: #fff5cc;
+  --warning-fg: #b76e00;
+  --info: #00b8d9;
+  --info-bg: #cafdf5;
+  --info-fg: #006c9c;
+
+  /* Minimal soft shadows */
+  --shadow-card: 0 0 2px 0 rgba(145, 158, 171, 0.2), 0 12px 24px -4px rgba(145, 158, 171, 0.12);
+  --shadow-dropdown: -20px 20px 40px -4px rgba(145, 158, 171, 0.24);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.145 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.145 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.985 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.396 0.141 25.723);
-  --destructive-foreground: oklch(0.637 0.237 25.331);
-  --border: oklch(0.269 0 0);
-  --input: oklch(0.269 0 0);
-  --ring: oklch(0.439 0 0);
-  --font-weight-medium: 500;
+  --background: #141a21;
+  --foreground: #ffffff;
+  --card: #1c252e;
+  --card-foreground: #ffffff;
+  --popover: #1c252e;
+  --popover-foreground: #ffffff;
+  --primary: #00a76f;
+  --primary-foreground: #ffffff;
+  --secondary: #28323d;
+  --secondary-foreground: #ffffff;
+  --muted: #28323d;
+  --muted-foreground: #919eab;
+  --accent: rgba(0, 167, 111, 0.16);
+  --accent-foreground: #5be49b;
+  --destructive: #ff5630;
+  --destructive-foreground: #ffffff;
+  --border: rgba(145, 158, 171, 0.2);
+  --input: rgba(145, 158, 171, 0.24);
+  --ring: #00a76f;
+  --font-weight-medium: 600;
   --font-weight-normal: 400;
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  --chart-1: #5be49b;
+  --chart-2: #61f3f3;
+  --chart-3: #c684ff;
+  --chart-4: #ffd666;
+  --chart-5: #ffac82;
+  --sidebar: #1c252e;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #00a76f;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: rgba(0, 167, 111, 0.16);
+  --sidebar-accent-foreground: #5be49b;
+  --sidebar-border: rgba(145, 158, 171, 0.2);
+  --sidebar-ring: #00a76f;
 }
 
 @theme inline {
+  --font-sans: var(--font-sans);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -111,6 +140,9 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -132,19 +164,23 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   html {
     font-size: var(--font-size);
   }
 
-  h1 { font-size: var(--text-2xl); font-weight: var(--font-weight-medium); line-height: 1.5; }
-  h2 { font-size: var(--text-xl); font-weight: var(--font-weight-medium); line-height: 1.5; }
-  h3 { font-size: var(--text-lg); font-weight: var(--font-weight-medium); line-height: 1.5; }
-  h4 { font-size: var(--text-base); font-weight: var(--font-weight-medium); line-height: 1.5; }
-  label { font-size: var(--text-base); font-weight: var(--font-weight-medium); line-height: 1.5; }
-  button { font-size: var(--text-base); font-weight: var(--font-weight-medium); line-height: 1.5; }
-  input { font-size: var(--text-base); font-weight: var(--font-weight-normal); line-height: 1.5; }
+  /* Minimal headings are bold and tight */
+  h1 { font-size: var(--text-2xl); font-weight: 800; line-height: 1.4; letter-spacing: -0.01em; }
+  h2 { font-size: var(--text-xl); font-weight: 700; line-height: 1.45; letter-spacing: -0.01em; }
+  h3 { font-size: var(--text-lg); font-weight: 700; line-height: 1.5; }
+  h4 { font-size: var(--text-base); font-weight: 600; line-height: 1.5; }
+  label { font-size: var(--text-sm); font-weight: 600; line-height: 1.5; }
+  button { font-weight: 600; line-height: 1.5; }
+  input { font-weight: var(--font-weight-normal); line-height: 1.5; }
 }
 
 /* Landing page — override global foreground so white text renders correctly on dark bg */
@@ -157,35 +193,40 @@
 /* Lightweight scrollbar styles */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.2); }
-* { scrollbar-width: thin; scrollbar-color: rgba(0, 0, 0, 0.1) transparent; }
+::-webkit-scrollbar-thumb { background: rgba(145, 158, 171, 0.32); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(145, 158, 171, 0.48); }
+* { scrollbar-width: thin; scrollbar-color: rgba(145, 158, 171, 0.32) transparent; }
 
 /* Smooth transitions */
 * {
   transition-property: color, background-color, border-color, box-shadow, transform, opacity;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
+  transition-duration: 180ms;
 }
 
 .no-transition { transition: none !important; }
 html { scroll-behavior: smooth; }
 
 :focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
-  border-radius: 0.375rem;
+  border-radius: 0.5rem;
 }
 
+/* Soft "lift" on interactive elements, matching Minimal's motion */
 button:not(:disabled):hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
-
 button:not(:disabled):active { transform: translateY(0); }
 
-.card-hover { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+.card-hover { transition: all 0.24s cubic-bezier(0.4, 0, 0.2, 1); }
 .card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-card);
 }
+
+/* Reusable Minimal status chip helpers */
+.chip-success { color: var(--success-fg); background: var(--success-bg); }
+.chip-warning { color: var(--warning-fg); background: var(--warning-bg); }
+.chip-error   { color: #b71d18; background: #ffe4de; }
+.chip-info    { color: var(--info-fg); background: var(--info-bg); }

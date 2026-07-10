@@ -508,7 +508,7 @@ export function Portfolio() {
         {[
           { label: 'Portfolios', value: kpis.totalPortfolios, Icon: Network, color: 'text-blue-600', bg: 'bg-blue-50' },
           { label: 'Programs', value: kpis.totalPrograms, Icon: Layers, color: 'text-purple-600', bg: 'bg-purple-50' },
-          { label: 'Projects', value: kpis.totalProjects, Icon: FolderKanban, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+          { label: 'Projects', value: kpis.totalProjects, Icon: FolderKanban, color: 'text-primary', bg: 'bg-accent' },
           { label: 'Total Budget', value: fmt(kpis.totalBudget), Icon: DollarSign, color: 'text-emerald-600', bg: 'bg-emerald-50' },
           { label: 'Total Spent', value: fmt(kpis.totalSpent), Icon: Activity, color: 'text-amber-600', bg: 'bg-amber-50' },
           { label: 'Unlockable Capacity', value: `${kpis.totalShareable}h`, Icon: Zap, color: 'text-orange-600', bg: 'bg-orange-50' },
@@ -696,7 +696,7 @@ export function Portfolio() {
         </Card>
 
         {/* Revenue Potential (Premium Widget) */}
-        <Card className="bg-gradient-to-br from-indigo-600 to-blue-700 text-white overflow-hidden border-none shadow-lg">
+        <Card className="bg-gradient-to-br from-primary to-blue-700 text-white overflow-hidden border-none shadow-lg">
           <CardContent className="p-6 relative">
             <Zap className="absolute top-[-10px] right-[-10px] w-24 h-24 text-white/10" />
             <div className="relative z-10">

@@ -30,7 +30,7 @@ const features = [
     icon: BarChart3,
     title: 'Financial Dashboards',
     desc: 'Deep P&L visibility, rate cards, budget alerts, and client profitability insights.',
-    color: 'from-violet-500 to-purple-400',
+    color: 'from-primary to-purple-400',
   },
   {
     icon: Zap,
@@ -146,7 +146,7 @@ export default function LandingPage() {
       {/* Navbar */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-4 bg-[#0a0a0f]/80 backdrop-blur-xl border-b border-white/5">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary flex items-center justify-center">
             <Zap className="w-4 h-4 text-white" />
           </div>
           <span className="font-bold text-lg tracking-tight">REP Platform</span>
@@ -165,7 +165,7 @@ export default function LandingPage() {
           </Link>
           <Link
             href="/sign-up"
-            className="text-sm bg-indigo-600 hover:bg-indigo-500 transition-all px-5 py-2 rounded-full font-medium shadow-lg shadow-indigo-600/20"
+            className="text-sm bg-primary hover:bg-accent0 transition-all px-5 py-2 rounded-full font-medium shadow-lg shadow-primary/20"
           >
             Get Started
           </Link>
@@ -184,19 +184,19 @@ export default function LandingPage() {
         />
 
         {/* Glowing orbs */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-violet-600/15 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-primary/15 rounded-full blur-3xl animate-pulse delay-1000" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/5 rounded-full blur-3xl" />
 
         <div className="relative z-10 max-w-5xl mx-auto">
-          <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 rounded-full px-4 py-2 text-sm text-indigo-300 mb-8 animate-fade-in">
-            <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+          <div className="inline-flex items-center gap-2 bg-accent0/10 border border-primary/20 rounded-full px-4 py-2 text-sm text-primary/40 mb-8 animate-fade-in">
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
             Now with AI Co-Pilot & Predictive Planning
           </div>
 
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 leading-none">
             <span className="block text-white">The Operating System</span>
-            <span className="block bg-gradient-to-r from-indigo-400 via-violet-400 to-cyan-400 bg-clip-text text-transparent">
+            <span className="block bg-gradient-to-r from-primary via-primary to-cyan-400 bg-clip-text text-transparent">
               for Modern Agencies
             </span>
           </h1>
@@ -209,7 +209,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/sign-up"
-              className="group flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 transition-all px-8 py-4 rounded-full font-semibold text-lg shadow-2xl shadow-indigo-600/30 hover:shadow-indigo-500/50 hover:-translate-y-0.5"
+              className="group flex items-center gap-2 bg-primary hover:bg-accent0 transition-all px-8 py-4 rounded-full font-semibold text-lg shadow-2xl shadow-primary/30 hover:shadow-primary/50 hover:-translate-y-0.5"
             >
               Start Free
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -274,7 +274,7 @@ export default function LandingPage() {
             </div>
           </div>
           {/* Glow under the dashboard */}
-          <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-3/4 h-20 bg-indigo-600/20 blur-3xl rounded-full" />
+          <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-3/4 h-20 bg-primary/20 blur-3xl rounded-full" />
         </div>
       </section>
 
@@ -288,8 +288,8 @@ export default function LandingPage() {
             const suffix = stat.value.replace(/\d+/, '')
             return (
               <div key={stat.label} className="text-center group">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 mb-4 group-hover:scale-110 transition-transform">
-                  <Icon className="w-5 h-5 text-indigo-400" />
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-accent0/10 border border-primary/20 mb-4 group-hover:scale-110 transition-transform">
+                  <Icon className="w-5 h-5 text-primary" />
                 </div>
                 <div className="text-4xl font-extrabold text-white mb-1">
                   <AnimatedCounter target={num} suffix={suffix} />
@@ -362,12 +362,12 @@ export default function LandingPage() {
       {/* CTA */}
       <section className="py-28 px-6 text-center relative overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-[800px] h-[400px] bg-indigo-600/10 rounded-full blur-3xl" />
+          <div className="w-[800px] h-[400px] bg-primary/10 rounded-full blur-3xl" />
         </div>
         <div className="relative z-10 max-w-2xl mx-auto">
           <h2 className="text-4xl md:text-5xl font-extrabold mb-6 leading-tight">
             Ready to transform<br />
-            <span className="bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-primary to-primary bg-clip-text text-transparent">
               how you manage resources?
             </span>
           </h2>
@@ -377,7 +377,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/sign-up"
-              className="group flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 transition-all px-10 py-4 rounded-full font-semibold text-lg shadow-2xl shadow-indigo-600/30 hover:-translate-y-0.5"
+              className="group flex items-center justify-center gap-2 bg-primary hover:bg-accent0 transition-all px-10 py-4 rounded-full font-semibold text-lg shadow-2xl shadow-primary/30 hover:-translate-y-0.5"
             >
               Create Free Account
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -396,7 +396,7 @@ export default function LandingPage() {
       <footer className="border-t border-white/5 py-10 px-6">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-primary flex items-center justify-center">
               <Zap className="w-3.5 h-3.5 text-white" />
             </div>
             <span className="font-bold text-sm">REP Platform</span>

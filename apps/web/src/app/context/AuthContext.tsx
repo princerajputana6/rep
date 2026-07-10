@@ -1,7 +1,6 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { useUser, useClerk } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 
 export interface AuthUser {
@@ -25,69 +24,67 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
+// Identity now comes from the unified /api/v1/auth/session endpoint, which
+// accepts either an admin password session or a provisioned Clerk user. This
+// keeps the portal usable by admins even when Clerk isn't configured.
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { user: clerkUser, isLoaded } = useUser()
-  const { signOut } = useClerk()
   const router = useRouter()
-  const [dbUser, setDbUser] = useState<AuthUser | null>(null)
-  const [isLoadingProfile, setIsLoadingProfile] = useState(false)
+  const [user, setUser] = useState<AuthUser | null>(null)
+  const [kind, setKind] = useState<'admin' | 'clerk' | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    if (isLoaded && clerkUser && !dbUser) {
-      setIsLoadingProfile(true)
-      fetch('/api/v1/auth/me')
-        .then((r) => r.json())
-        .then((json) => {
-          if (json.success && json.data) {
-            setDbUser({
-              id: json.data._id ?? json.data.clerkId,
-              email: json.data.email,
-              name: json.data.name,
-              role: json.data.role,
-              agencyId: json.data.agencyId,
-            })
-          }
-        })
-        .catch(console.error)
-        .finally(() => setIsLoadingProfile(false))
+    let active = true
+    fetch('/api/v1/auth/session')
+      .then((r) => r.json())
+      .then((json) => {
+        if (!active) return
+        if (json?.success && json.data?.authenticated) {
+          setUser(json.data.user)
+          setKind(json.data.kind)
+        } else {
+          setUser(null)
+          setKind(null)
+        }
+      })
+      .catch(() => active && setUser(null))
+      .finally(() => active && setIsLoading(false))
+    return () => {
+      active = false
     }
-    if (!clerkUser) setDbUser(null)
-  }, [isLoaded, clerkUser])
+  }, [])
 
-  // Mirror the DB user to localStorage so non-context consumers (like the
-  // Sidebar's role-gated section) can read role synchronously.
+  // Mirror the user to localStorage so non-context consumers (e.g. the Sidebar's
+  // role-gated section) can read role synchronously.
   useEffect(() => {
     if (typeof window === 'undefined') return
-    if (dbUser) localStorage.setItem('rep_user', JSON.stringify(dbUser))
+    if (user) localStorage.setItem('rep_user', JSON.stringify(user))
     else localStorage.removeItem('rep_user')
-  }, [dbUser])
+  }, [user])
 
-  const clerkFallbackUser: AuthUser | null = clerkUser
-    ? {
-        id: clerkUser.id,
-        email: clerkUser.emailAddresses[0]?.emailAddress ?? '',
-        name: `${clerkUser.firstName ?? ''} ${clerkUser.lastName ?? ''}`.trim() || 'User',
-        role: (clerkUser.publicMetadata?.role as string) ?? 'VIEWER',
-        agencyId: (clerkUser.publicMetadata?.agencyId as string) ?? '',
-      }
-    : null
-
-  const login = async (_email: string, _password: string) => {
+  const login = async () => {
     router.push('/sign-in')
   }
 
   const logout = async () => {
-    await signOut()
-    router.push('/')
+    if (kind === 'admin') {
+      await fetch('/api/v1/admin/auth/logout', { method: 'POST' }).catch(() => {})
+      setUser(null)
+      router.push('/superadmin/login')
+      return
+    }
+    // Clerk users: hand off to the Clerk sign-out page.
+    setUser(null)
+    router.push('/sign-in')
   }
 
   return (
     <AuthContext.Provider
       value={{
-        user: dbUser ?? clerkFallbackUser,
+        user,
         token: null,
-        isAuthenticated: isLoaded && !!clerkUser,
-        isLoading: !isLoaded,
+        isAuthenticated: !!user,
+        isLoading,
         error: null,
         login,
         logout,

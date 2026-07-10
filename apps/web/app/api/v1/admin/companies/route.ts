@@ -1,87 +1,145 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import connectDB from '@/lib/mongodb'
-import { Agency } from '@/lib/models/Agency'
-import { User } from '@/lib/models/User'
-import { Subscription } from '@/lib/models/Subscription'
-import { ok, err, requireAuth, isNextResponse } from '@/lib/api-helpers'
-import { PLAN_DEFAULTS, ModuleKey } from '@/lib/modules'
+import { Company } from '@/lib/models/Company'
+import { License } from '@/lib/models/License'
+import { Environment } from '@/lib/models/Environment'
+import { AdminUser } from '@/lib/models/AdminUser'
+import { requireAdmin, isNextResponse, hashPassword, generateTempPassword } from '@/lib/auth/adminAuth'
+import { PLAN_DEFAULTS, SANDBOX_ALLOWANCE, PLAN_TIERS, PlanTier } from '@/lib/modules'
+import { sendCompanyAdminWelcome } from '@/lib/email/mailer'
 
-// SUPER_ADMIN only. Returns every agency joined with its subscription
-// (subscription may be null until the admin creates one).
-export async function GET(_req: NextRequest) {
-  const ctx = await requireAuth()
-  if (isNextResponse(ctx)) return ctx
-  if (ctx.role !== 'SUPER_ADMIN') return err('Forbidden', 'FORBIDDEN', 403)
-  await connectDB()
-
-  const [agencies, subs, userCounts] = await Promise.all([
-    Agency.find({}).sort({ createdAt: -1 }).lean(),
-    Subscription.find({}).lean(),
-    User.aggregate([{ $group: { _id: '$agencyId', count: { $sum: 1 } } }]),
-  ])
-  const subByAgency = new Map(subs.map((s) => [String(s.agencyId), s]))
-  const userCountByAgency = new Map(userCounts.map((u: { _id: string; count: number }) => [String(u._id), u.count]))
-
-  return ok(agencies.map((a) => ({
-    ...a,
-    subscription: subByAgency.get(String(a._id)) ?? null,
-    userCount: userCountByAgency.get(String(a._id)) ?? 0,
-  })))
+function slugify(s: string) {
+  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 40) || 'company'
 }
 
-// Onboard a brand-new company in one call: creates the Agency, an initial
-// AGENCY_OWNER user, and a Subscription seeded from the chosen plan.
-export async function POST(req: NextRequest) {
-  const ctx = await requireAuth()
+async function uniqueSlug(base: string) {
+  let slug = base
+  let n = 1
+  while (await Company.exists({ slug })) slug = `${base}-${++n}`
+  return slug
+}
+
+async function uniqueUsername(base: string) {
+  const clean = base.toLowerCase().replace(/[^a-z0-9._-]+/g, '') || 'admin'
+  let username = clean
+  let n = 1
+  while (await AdminUser.exists({ username })) username = `${clean}${++n}`
+  return username
+}
+
+// SUPER_ADMIN: list all licensed companies with their license + admin.
+export async function GET() {
+  const ctx = await requireAdmin('SUPER_ADMIN')
   if (isNextResponse(ctx)) return ctx
-  if (ctx.role !== 'SUPER_ADMIN') return err('Forbidden', 'FORBIDDEN', 403)
   await connectDB()
-  const body = await req.json()
 
-  if (!body.name?.trim()) return err('Agency name required', 'VALIDATION', 400)
-  if (!body.ownerEmail?.trim()) return err('Owner email required', 'VALIDATION', 400)
-  if (!body.owner?.trim()) return err('Owner name required', 'VALIDATION', 400)
+  const companies = await Company.find({}).sort({ createdAt: -1 }).lean()
+  const [licenses, admins] = await Promise.all([
+    License.find({}).lean(),
+    AdminUser.find({ role: 'COMPANY_ADMIN' }).select('-passwordHash').lean(),
+  ])
+  const licByCompany = new Map(licenses.map((l) => [String(l.companyId), l]))
+  const adminByCompany = new Map(admins.map((a) => [String(a.companyId), a]))
 
-  const existingAgency = await Agency.findOne({ ownerEmail: body.ownerEmail.trim() })
-  if (existingAgency) return err('Agency with this owner email already exists', 'CONFLICT', 409)
-
-  const agency = await Agency.create({
-    name: body.name.trim(),
-    owner: body.owner.trim(),
-    ownerEmail: body.ownerEmail.trim(),
-    participationLevel: body.participationLevel ?? 'full',
-    status: 'ACTIVE',
+  return NextResponse.json({
+    success: true,
+    data: companies.map((c) => ({
+      ...c,
+      license: licByCompany.get(String(c._id)) ?? null,
+      admin: adminByCompany.get(String(c._id)) ?? null,
+    })),
   })
+}
 
-  // Seed an owner user if one doesn't already exist for this email.
-  const existingUser = await User.findOne({ email: body.ownerEmail.trim() })
-  let user = existingUser
-  if (!user) {
-    user = await User.create({
-      name: body.owner.trim(),
-      email: body.ownerEmail.trim(),
-      agencyId: String(agency._id),
-      role: 'AGENCY_OWNER',
-      clerkId: body.clerkId ?? `pending_${Date.now()}`,
-    })
+// SUPER_ADMIN: onboard a new company end-to-end.
+//   Company + License(tier) + production Environment + COMPANY_ADMIN account.
+//   Emails the admin a username + temporary password (forced reset on first login).
+export async function POST(req: NextRequest) {
+  const ctx = await requireAdmin('SUPER_ADMIN')
+  if (isNextResponse(ctx)) return ctx
+  await connectDB()
+  const body = await req.json().catch(() => ({}))
+
+  const name = String(body.name ?? '').trim()
+  const adminName = String(body.adminName ?? '').trim()
+  const adminEmail = String(body.adminEmail ?? '').toLowerCase().trim()
+  const tier: PlanTier = PLAN_TIERS.includes(body.tier) ? body.tier : 'PRIME'
+
+  if (!name) return NextResponse.json({ success: false, error: { code: 'VALIDATION', message: 'Company name is required' } }, { status: 400 })
+  if (!adminName) return NextResponse.json({ success: false, error: { code: 'VALIDATION', message: 'Admin name is required' } }, { status: 400 })
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(adminEmail)) return NextResponse.json({ success: false, error: { code: 'VALIDATION', message: 'A valid admin email is required' } }, { status: 400 })
+
+  if (await Company.exists({ adminEmail })) {
+    return NextResponse.json({ success: false, error: { code: 'CONFLICT', message: 'A company with this admin email already exists' } }, { status: 409 })
+  }
+  if (await AdminUser.exists({ email: adminEmail })) {
+    return NextResponse.json({ success: false, error: { code: 'CONFLICT', message: 'An admin account with this email already exists' } }, { status: 409 })
   }
 
-  const plan = body.plan && PLAN_DEFAULTS[body.plan as string] ? body.plan : 'FREE'
-  const enabledModules: ModuleKey[] = Array.isArray(body.enabledModules)
-    ? body.enabledModules
-    : PLAN_DEFAULTS[plan]
-
-  const subscription = await Subscription.create({
-    agencyId: String(agency._id),
-    plan,
-    status: body.status ?? 'TRIAL',
-    enabledModules,
-    maxUsers: body.maxUsers ?? null,
-    maxProjects: body.maxProjects ?? null,
-    trialEndsAt: body.trialEndsAt ? new Date(body.trialEndsAt) : null,
-    notes: body.notes ?? '',
-    updatedBy: ctx.userId,
+  const company = await Company.create({
+    name,
+    slug: await uniqueSlug(slugify(name)),
+    adminEmail,
+    adminName,
+    tier,
+    status: 'ACTIVE',
+    createdBy: ctx.adminId,
   })
 
-  return ok({ agency, user, subscription }, 201)
+  const license = await License.create({
+    companyId: String(company._id),
+    tier,
+    status: body.status && ['TRIAL', 'ACTIVE'].includes(body.status) ? body.status : 'ACTIVE',
+    enabledModules: Array.isArray(body.enabledModules) && body.enabledModules.length ? body.enabledModules : PLAN_DEFAULTS[tier],
+    maxUsers: body.maxUsers ?? null,
+    maxAgencies: body.maxAgencies ?? null,
+    sandboxLimit: SANDBOX_ALLOWANCE[tier],
+    seats: body.seats ?? null,
+    validTo: body.validTo ? new Date(body.validTo) : null,
+    issuedBy: ctx.adminId,
+    notes: body.notes ?? '',
+  })
+
+  const environment = await Environment.create({
+    companyId: String(company._id),
+    name: 'Production',
+    type: 'PRODUCTION',
+    status: 'ACTIVE',
+    isDefault: true,
+    createdBy: ctx.adminId,
+  })
+
+  const username = await uniqueUsername(adminEmail.split('@')[0])
+  const tempPassword = generateTempPassword()
+  const admin = await AdminUser.create({
+    username,
+    email: adminEmail,
+    passwordHash: await hashPassword(tempPassword),
+    name: adminName,
+    role: 'COMPANY_ADMIN',
+    companyId: String(company._id),
+    status: 'ACTIVE',
+    mustResetPassword: true,
+    createdBy: ctx.adminId,
+  })
+
+  let emailResult: unknown
+  try {
+    emailResult = await sendCompanyAdminWelcome({ to: adminEmail, companyName: name, adminName, username, tempPassword })
+  } catch (e) {
+    emailResult = { delivered: false, transport: 'error', error: (e as Error).message }
+  }
+
+  return NextResponse.json({
+    success: true,
+    data: {
+      company,
+      license,
+      environment,
+      admin: { id: String(admin._id), username, email: adminEmail, name: adminName, role: admin.role },
+      // Shown to the super admin so they can relay credentials if email delivery is not yet configured.
+      credentials: { username, tempPassword },
+      email: emailResult,
+    },
+  }, { status: 201 })
 }

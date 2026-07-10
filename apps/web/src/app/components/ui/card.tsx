@@ -29,7 +29,7 @@ function Card({
       <div
         data-slot="card"
         className={cn(
-          "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border relative transition-all duration-200",
+          "bg-card text-card-foreground flex flex-col gap-6 rounded-2xl border relative transition-all duration-200 shadow-[var(--shadow-card)]",
           className,
           collapsed && "gap-0"
         )}

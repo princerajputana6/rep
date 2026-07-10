@@ -175,12 +175,12 @@ export function Home({ onPageChange }: HomeProps) {
     blue: 'bg-blue-500 hover:bg-blue-600',
     amber: 'bg-amber-500 hover:bg-amber-600',
     purple: 'bg-purple-500 hover:bg-purple-600',
-    indigo: 'bg-indigo-500 hover:bg-indigo-600',
+    indigo: 'bg-accent0 hover:bg-primary',
     green: 'bg-green-500 hover:bg-green-600',
     emerald: 'bg-emerald-500 hover:bg-emerald-600',
     cyan: 'bg-cyan-500 hover:bg-cyan-600',
     teal: 'bg-teal-500 hover:bg-teal-600',
-    violet: 'bg-violet-500 hover:bg-violet-600',
+    violet: 'bg-accent0 hover:bg-primary',
     pink: 'bg-pink-500 hover:bg-pink-600',
     orange: 'bg-orange-500 hover:bg-orange-600',
     gray: 'bg-gray-500 hover:bg-gray-600',
@@ -288,9 +288,9 @@ export function Home({ onPageChange }: HomeProps) {
               className="h-auto py-4 flex flex-col items-center gap-2"
               onClick={() => onPageChange('borrow-requests')}
             >
-              <ArrowLeftRight className="w-6 h-6 text-indigo-600" />
+              <ArrowLeftRight className="w-6 h-6 text-primary" />
               <span className="text-sm font-medium">Borrow Requests</span>
-              <Badge className="bg-indigo-500">12</Badge>
+              <Badge className="bg-accent0">12</Badge>
             </Button>
             <Button
               variant="outline"
@@ -455,13 +455,13 @@ export function Home({ onPageChange }: HomeProps) {
       case 'borrow-requests':
         return (
           <div className="space-y-3">
-            <div className="p-3 bg-indigo-50 rounded-lg">
+            <div className="p-3 bg-accent rounded-lg">
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <p className="font-medium text-gray-900">TechVentures</p>
                   <p className="text-xs text-gray-600">Requesting Data Engineer • 3 months</p>
                 </div>
-                <Badge className="bg-indigo-500">New</Badge>
+                <Badge className="bg-accent0">New</Badge>
               </div>
               <div className="flex gap-2 mt-2">
                 <Button size="sm" variant="outline" className="flex-1">Review</Button>

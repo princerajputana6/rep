@@ -6,6 +6,7 @@ import { BorrowRequest } from '@/lib/models/BorrowRequest'
 import { ResourceApproval } from '@/lib/models/ResourceApproval'
 import { AuditLog } from '@/lib/models/AuditLog'
 import { User } from '@/lib/models/User'
+import '@/lib/models/Client' // register Client schema for Project.clientId populate
 import { ok, requireAuth, isNextResponse } from '@/lib/api-helpers'
 
 export async function GET(_req: NextRequest) {
