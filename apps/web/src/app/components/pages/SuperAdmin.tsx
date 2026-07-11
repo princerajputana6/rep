@@ -17,7 +17,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/app/components/ui/select'
 import { Checkbox } from '@/app/components/ui/checkbox'
-import { Plus, Settings, Loader2, Building2, ShieldAlert } from 'lucide-react'
+import { Plus, Settings, Loader2, Building2, ShieldAlert, Copy, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import { MODULES, MODULE_GROUPS, MODULE_KEYS, PLAN_DEFAULTS, PLAN_LABELS, type ModuleKey, type PlanTier } from '@/lib/modules'
@@ -54,6 +54,21 @@ interface CompanyRow {
   } | null
 }
 
+// Shape of POST /admin/companies response (the bits the UI consumes).
+interface OnboardResponse {
+  credentials: { username: string; tempPassword: string }
+  email?: { delivered: boolean; transport: string; error?: string; hint?: string }
+}
+
+interface OnboardResult {
+  companyName: string
+  adminEmail: string
+  username: string
+  tempPassword: string
+  emailDelivered: boolean
+  emailHint?: string
+}
+
 const TIER_COLOR: Record<PlanTier, string> = {
   PRIME: 'bg-blue-100 text-blue-700',
   ULTIMATE: 'bg-purple-100 text-purple-700',
@@ -66,6 +81,30 @@ const STATUS_COLOR: Record<LicenseStatus, string> = {
   SUSPENDED: 'bg-amber-100 text-amber-700',
   CANCELLED: 'bg-gray-100 text-gray-700',
   EXPIRED: 'bg-red-100 text-red-700',
+}
+
+function CredentialRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <div>
+        <p className="text-xs text-gray-500">{label}</p>
+        <p className={`text-sm font-semibold ${mono ? 'font-mono tracking-wide' : ''}`}>{value}</p>
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="shrink-0"
+        onClick={() =>
+          navigator.clipboard
+            ?.writeText(value)
+            .then(() => toast.success(`${label} copied`))
+            .catch(() => toast.error('Copy failed'))
+        }
+      >
+        <Copy className="w-4 h-4" />
+      </Button>
+    </div>
+  )
 }
 
 export function SuperAdmin() {
@@ -81,6 +120,9 @@ export function SuperAdmin() {
   const [onEmail, setOnEmail] = useState('')
   const [onTier, setOnTier] = useState<PlanTier>('PRIME')
   const [onSaving, setOnSaving] = useState(false)
+  // Result of the last onboarding — shown so the super admin can always relay
+  // credentials even when email delivery isn't configured/verified yet.
+  const [onResult, setOnResult] = useState<OnboardResult | null>(null)
 
   // Subscription editor dialog state
   const [editTarget, setEditTarget] = useState<CompanyRow | null>(null)
@@ -125,13 +167,26 @@ export function SuperAdmin() {
     }
     setOnSaving(true)
     try {
-      await api.post('/admin/companies', {
+      const res = await api.post<OnboardResponse>('/admin/companies', {
         name: onName.trim(),
         adminName: onOwner.trim(),
         adminEmail: onEmail.trim(),
         tier: onTier,
       })
-      toast.success(`Company "${onName}" onboarded.`)
+      const delivered = res.email?.delivered ?? false
+      setOnResult({
+        companyName: onName.trim(),
+        adminEmail: onEmail.trim(),
+        username: res.credentials.username,
+        tempPassword: res.credentials.tempPassword,
+        emailDelivered: delivered,
+        emailHint: res.email?.hint,
+      })
+      toast[delivered ? 'success' : 'warning'](
+        delivered
+          ? `Company "${onName}" onboarded — credentials emailed to ${onEmail.trim()}.`
+          : `Company "${onName}" onboarded, but the email didn't send. Copy the credentials below.`
+      )
       setOnName(''); setOnOwner(''); setOnEmail(''); setOnTier('PRIME')
       setOnboardOpen(false); load()
     } catch (e: unknown) {
@@ -324,6 +379,70 @@ export function SuperAdmin() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setOnboardOpen(false)} disabled={onSaving}>Cancel</Button>
             <Button onClick={handleOnboard} disabled={onSaving}>{onSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}Onboard</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Onboarding Result Dialog — credentials + email delivery status */}
+      <Dialog open={!!onResult} onOpenChange={(o) => !o && setOnResult(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{onResult?.companyName} onboarded</DialogTitle>
+            <DialogDescription>
+              The admin must set a new password on first login. Share these credentials securely.
+            </DialogDescription>
+          </DialogHeader>
+          {onResult && (
+            <div className="grid gap-4 py-2">
+              <div
+                className={`flex items-start gap-2 rounded-lg border p-3 text-sm ${
+                  onResult.emailDelivered
+                    ? 'border-green-200 bg-green-50 text-green-800'
+                    : 'border-amber-200 bg-amber-50 text-amber-800'
+                }`}
+              >
+                {onResult.emailDelivered ? (
+                  <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                )}
+                <div>
+                  {onResult.emailDelivered ? (
+                    <>Credentials were emailed to <strong>{onResult.adminEmail}</strong>.</>
+                  ) : (
+                    <>
+                      Email to <strong>{onResult.adminEmail}</strong> could not be delivered.
+                      {onResult.emailHint ? <> {onResult.emailHint}</> : null} Copy the credentials
+                      below and share them with the admin directly.
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-lg bg-gray-50 p-4 space-y-3">
+                <CredentialRow label="Username" value={onResult.username} />
+                <CredentialRow label="Temporary password" value={onResult.tempPassword} mono />
+              </div>
+              <p className="text-xs text-gray-500">
+                For security this temporary password is shown only once here.
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (onResult) {
+                  navigator.clipboard
+                    ?.writeText(`Username: ${onResult.username}\nTemporary password: ${onResult.tempPassword}`)
+                    .then(() => toast.success('Credentials copied'))
+                    .catch(() => toast.error('Copy failed'))
+                }
+              }}
+            >
+              <Copy className="w-4 h-4 mr-2" />Copy both
+            </Button>
+            <Button onClick={() => setOnResult(null)}>Done</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

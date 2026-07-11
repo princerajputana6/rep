@@ -10,10 +10,33 @@ if (process.env.RESEND_API_KEY) {
 
 export interface SendResult {
   delivered: boolean
-  transport: 'resend' | 'console'
+  transport: 'resend' | 'console' | 'error'
   id?: string
+  error?: string
+  // A human-readable next step when delivery fails for a known reason.
+  hint?: string
 }
 
+// Resend's shared `onboarding@resend.dev` sender can ONLY deliver to the email
+// address that owns the Resend account. To email arbitrary company admins you
+// must verify a domain at resend.com/domains and set EMAIL_FROM to a sender on it.
+const USING_SHARED_TEST_SENDER = /@resend\.dev>?$/i.test(FROM)
+
+function deliveryHint(errorMessage: string): string | undefined {
+  const msg = errorMessage.toLowerCase()
+  if (USING_SHARED_TEST_SENDER || msg.includes('testing') || msg.includes('verify a domain')) {
+    return (
+      "Delivery is restricted because EMAIL_FROM uses Resend's shared testing sender " +
+      "(onboarding@resend.dev), which only reaches your own Resend account email. " +
+      'Verify a domain at resend.com/domains and set EMAIL_FROM to a sender on it ' +
+      '(e.g. "REP Platform <noreply@yourdomain.com>").'
+    )
+  }
+  return undefined
+}
+
+// Never throws — callers get a structured result so onboarding can always fall
+// back to showing the temp credentials to the super admin.
 async function send(to: string, subject: string, html: string): Promise<SendResult> {
   // Fallback: if Resend isn't configured yet, log the message so onboarding
   // still works locally. Swap in the key via env to actually deliver.
@@ -23,9 +46,21 @@ async function send(to: string, subject: string, html: string): Promise<SendResu
     )
     return { delivered: false, transport: 'console' }
   }
-  const { data, error } = await resend.emails.send({ from: FROM, to, subject, html })
-  if (error) throw new Error(`Resend error: ${error.message}`)
-  return { delivered: true, transport: 'resend', id: data?.id }
+  try {
+    const { data, error } = await resend.emails.send({ from: FROM, to, subject, html })
+    if (error) {
+      const message = error.message || String(error)
+      const hint = deliveryHint(message)
+      console.error(`[email:resend] Failed to send to ${to}: ${message}${hint ? ` — ${hint}` : ''}`)
+      return { delivered: false, transport: 'error', error: message, hint }
+    }
+    return { delivered: true, transport: 'resend', id: data?.id }
+  } catch (e) {
+    const message = (e as Error).message || 'Unknown email error'
+    const hint = deliveryHint(message)
+    console.error(`[email:resend] Threw sending to ${to}: ${message}${hint ? ` — ${hint}` : ''}`)
+    return { delivered: false, transport: 'error', error: message, hint }
+  }
 }
 
 // Sent to a company admin the moment a super admin onboards their company.
