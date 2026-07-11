@@ -6,6 +6,12 @@ import { hashPassword, generateTempPassword } from '@/lib/auth/session'
 import { ok, err, requireAuth, isNextResponse } from '@/lib/api-helpers'
 
 const MEMBER_ROLES = ['MANAGER', 'MEMBER', 'VIEWER'] as const
+const ROLE_ALIASES: Record<string, (typeof MEMBER_ROLES)[number]> = {
+  AGENCY_OWNER: 'MANAGER',
+  RESOURCE_MANAGER: 'MANAGER',
+  PROJECT_MANAGER: 'MANAGER',
+  FINANCE_CONTROLLER: 'MANAGER',
+}
 
 export async function GET(req: NextRequest) {
   const ctx = await requireAuth()
@@ -51,7 +57,7 @@ export async function POST(req: NextRequest) {
   if (isNextResponse(ctx)) return ctx
 
   await connectDB()
-  const body = await req.json()
+  const body = await req.json().catch(() => ({}))
 
   if (!['SUPER_ADMIN', 'COMPANY_ADMIN'].includes(ctx.role)) {
     return err('Forbidden', 'FORBIDDEN', 403)
@@ -63,7 +69,8 @@ export async function POST(req: NextRequest) {
   const name = String(body.name ?? '').trim()
   if (!name) return err('Name is required', 'VALIDATION', 400)
 
-  const role = String(body.role ?? 'VIEWER').toUpperCase()
+  const requestedRole = String(body.role ?? 'VIEWER').toUpperCase()
+  const role = ROLE_ALIASES[requestedRole] ?? requestedRole
   if (!MEMBER_ROLES.includes(role as (typeof MEMBER_ROLES)[number])) {
     return err('Invalid role', 'VALIDATION', 400)
   }

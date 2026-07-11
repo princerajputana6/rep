@@ -20,7 +20,19 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
   if (res.status === 204) return undefined as T
 
-  const json: { success: boolean; data?: T; error?: { code: string; message: string } } = await res.json()
+  const text = await res.text()
+  let json: { success: boolean; data?: T; error?: { code: string; message: string } }
+  try {
+    json = text ? JSON.parse(text) : { success: res.ok }
+  } catch {
+    json = {
+      success: false,
+      error: {
+        code: 'INVALID_RESPONSE',
+        message: text || `HTTP ${res.status}`,
+      },
+    }
+  }
 
   if (!res.ok || !json.success) {
     const msg = json.error?.message ?? `HTTP ${res.status}`
