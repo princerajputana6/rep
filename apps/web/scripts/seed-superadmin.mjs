@@ -1,4 +1,8 @@
-// Seed (or reset) the platform SUPER_ADMIN account in the unified `users` collection.
+// Seed (or reset) the platform SUPER_ADMIN account.
+//
+// The current auth flow uses the unified `users` collection. Some deployed
+// environments may still be running an older admin console build that checks
+// `adminusers`, so this script keeps both records in sync.
 //
 //   npm run seed:superadmin
 //
@@ -26,13 +30,14 @@ if (!process.env.MONGODB_URI) {
 const USERNAME = (process.env.SUPERADMIN_USERNAME || 'superadmin').toLowerCase()
 const PASSWORD = process.env.SUPERADMIN_PASSWORD || 'ChangeMe!2026'
 const EMAIL = (process.env.SUPERADMIN_EMAIL || 'superadmin@rep.local').toLowerCase()
+const DB_NAME = process.env.SUPERADMIN_DB || process.argv.find((arg) => arg.startsWith('--db='))?.slice(5)
 
 async function main() {
-  await mongoose.connect(process.env.MONGODB_URI)
+  await mongoose.connect(process.env.MONGODB_URI, DB_NAME ? { dbName: DB_NAME } : undefined)
   const users = mongoose.connection.db.collection('users')
+  const adminUsers = mongoose.connection.db.collection('adminusers')
   const passwordHash = await bcrypt.hash(PASSWORD, 10)
 
-  const existing = await users.findOne({ username: USERNAME })
   const doc = {
     username: USERNAME,
     email: EMAIL,
@@ -46,15 +51,26 @@ async function main() {
     mustResetPassword: false,
     updatedAt: new Date(),
   }
-  if (existing) {
-    await users.updateOne({ _id: existing._id }, { $set: doc })
-    console.log(`♻️  Reset existing super admin "${USERNAME}".`)
-  } else {
-    await users.insertOne({ ...doc, createdAt: new Date() })
-    console.log(`✅ Created super admin "${USERNAME}".`)
+
+  async function upsertSuperAdmin(collection, label, statusValue) {
+    const existing = await collection.findOne({
+      $or: [{ username: USERNAME }, { email: EMAIL }],
+    })
+    const record = { ...doc, status: statusValue }
+    if (existing) {
+      await collection.updateOne({ _id: existing._id }, { $set: record })
+      console.log(`♻️  Reset existing ${label} super admin "${USERNAME}".`)
+      return
+    }
+    await collection.insertOne({ ...record, createdAt: new Date() })
+    console.log(`✅ Created ${label} super admin "${USERNAME}".`)
   }
 
+  await upsertSuperAdmin(users, 'users', 'ACTIVE')
+  await upsertSuperAdmin(adminUsers, 'adminusers', 'ACTIVE')
+
   console.log('\n────────────────────────────────────────')
+  console.log(`  Database: ${mongoose.connection.db.databaseName}`)
   console.log('  Super Admin login  →  /login')
   console.log(`  Username: ${USERNAME}   (or email: ${EMAIL})`)
   console.log(`  Password: ${PASSWORD}`)

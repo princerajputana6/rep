@@ -4,6 +4,7 @@ import { Company } from '@/lib/models/Company'
 import { License } from '@/lib/models/License'
 import { Environment } from '@/lib/models/Environment'
 import { User } from '@/lib/models/User'
+import { Agency } from '@/lib/models/Agency'
 import { requireRole, isNextResponse, hashPassword, generateTempPassword } from '@/lib/auth/session'
 import { PLAN_DEFAULTS, SANDBOX_ALLOWANCE, PLAN_TIERS, PlanTier } from '@/lib/modules'
 import { sendCompanyAdminWelcome } from '@/lib/email/mailer'
@@ -34,23 +35,38 @@ export async function GET() {
   await connectDB()
 
   const companies = await Company.find({}).sort({ createdAt: -1 }).lean()
-  const [licenses, admins, userCounts] = await Promise.all([
+  const [licenses, admins, userCounts, agencyCounts, environmentCounts, sandboxCounts] = await Promise.all([
     License.find({}).lean(),
     User.find({ role: 'COMPANY_ADMIN' }).select('-passwordHash').lean(),
     User.aggregate([{ $group: { _id: '$companyId', count: { $sum: 1 } } }]),
+    Agency.aggregate([{ $group: { _id: '$companyId', count: { $sum: 1 } } }]),
+    Environment.aggregate([{ $group: { _id: '$companyId', count: { $sum: 1 } } }]),
+    Environment.aggregate([
+      { $match: { type: 'SANDBOX' } },
+      { $group: { _id: '$companyId', count: { $sum: 1 } } },
+    ]),
   ])
   const licByCompany = new Map(licenses.map((l) => [String(l.companyId), l]))
   const adminByCompany = new Map(admins.map((a) => [String(a.companyId), a]))
   const userCountByCompany = new Map(userCounts.map((u) => [String(u._id), u.count]))
+  const agencyCountByCompany = new Map(agencyCounts.map((a) => [String(a._id), a.count]))
+  const environmentCountByCompany = new Map(environmentCounts.map((e) => [String(e._id), e.count]))
+  const sandboxCountByCompany = new Map(sandboxCounts.map((e) => [String(e._id), e.count]))
 
   return NextResponse.json({
     success: true,
-    data: companies.map((c) => ({
-      ...c,
-      license: licByCompany.get(String(c._id)) ?? null,
-      admin: adminByCompany.get(String(c._id)) ?? null,
-      userCount: userCountByCompany.get(String(c._id)) ?? 0,
-    })),
+    data: companies.map((c) => {
+      const id = String(c._id)
+      return {
+        ...c,
+        license: licByCompany.get(id) ?? null,
+        admin: adminByCompany.get(id) ?? null,
+        userCount: userCountByCompany.get(id) ?? 0,
+        agencyCount: agencyCountByCompany.get(id) ?? 0,
+        environmentCount: environmentCountByCompany.get(id) ?? 0,
+        sandboxCount: sandboxCountByCompany.get(id) ?? 0,
+      }
+    }),
   })
 }
 
