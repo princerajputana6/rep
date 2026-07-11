@@ -13,12 +13,28 @@ import {
   FolderKanban,
   ClipboardCheck,
   DollarSign,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Cloud,
+  FlaskConical,
+  Plus
 } from 'lucide-react';
 import { Badge } from '@/app/components/ui/badge';
 import { Button } from '@/app/components/ui/button';
+import { Input } from '@/app/components/ui/input';
+import { Label } from '@/app/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/app/components/ui/dialog';
 import { WaffleMenu } from '@/app/components/layout/WaffleMenu';
 import { useAgencyContext } from '@/app/context/AgencyContext';
+import { useEnvironmentContext } from '@/app/context/EnvironmentContext';
+import { toast } from 'sonner';
+import { api } from '@/lib/api';
 import {
   Select,
   SelectContent,
@@ -64,7 +80,20 @@ const availablePages = [
 export function Header({ currentPage, onPageChange }: HeaderProps) {
   const [pinnedPages, setPinnedPages] = useState<PinnedPage[]>([]);
   const [showPinMenu, setShowPinMenu] = useState(false);
+  const [showSandboxDialog, setShowSandboxDialog] = useState(false);
+  const [showPromoteDialog, setShowPromoteDialog] = useState(false);
+  const [sandboxName, setSandboxName] = useState('');
   const { selectedAgency, setSelectedAgency, agencies } = useAgencyContext();
+  const {
+    environments,
+    selectedEnvironmentId,
+    selectedEnvironment,
+    setSelectedEnvironmentId,
+    createSandbox,
+    sandboxCount,
+    sandboxLimit,
+    canCreateSandbox,
+  } = useEnvironmentContext();
   const { user, logout } = useAuth();
 
   // Load pinned pages from localStorage on mount
@@ -96,6 +125,35 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
 
   const isPagePinned = (pageId: Page) => {
     return pinnedPages.some(p => p.id === pageId);
+  };
+
+  const handleCreateSandbox = async () => {
+    if (!canCreateSandbox) {
+      toast.error(`Your plan includes ${sandboxLimit} sandbox${sandboxLimit === 1 ? '' : 'es'}. Purchase more to add another.`);
+      return;
+    }
+    try {
+      await createSandbox(sandboxName.trim() || `Sandbox ${sandboxCount + 1}`);
+      setSandboxName('');
+      setShowSandboxDialog(false);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to create sandbox');
+    }
+  };
+
+  const handlePromoteSandbox = async () => {
+    const production = environments.find((env) => env.type === 'PRODUCTION');
+    if (!selectedEnvironment || selectedEnvironment.type !== 'SANDBOX' || !production) return;
+    try {
+      const result = await api.post<{ agencies: number; portfolios: number; programs: number; projects: number }>('/admin/environments/promote', {
+        fromEnvironmentId: selectedEnvironment._id,
+        toEnvironmentId: production._id,
+      });
+      toast.success(`Promoted ${result.projects} project(s), ${result.programs} program(s), and ${result.portfolios} portfolio(s) to production.`);
+      setShowPromoteDialog(false);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Failed to promote sandbox data');
+    }
   };
 
   return (
@@ -217,6 +275,41 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
         </div>
 
         <div className="w-full max-w-[220px]">
+          <Select value={selectedEnvironmentId} onValueChange={setSelectedEnvironmentId}>
+            <SelectTrigger className="h-10">
+              <div className="flex items-center gap-2 min-w-0">
+                {selectedEnvironment?.type === 'SANDBOX' ? <FlaskConical className="w-4 h-4 text-amber-600" /> : <Cloud className="w-4 h-4 text-green-600" />}
+                <SelectValue placeholder="Environment" />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              {environments.map((env) => (
+                <SelectItem key={env._id} value={env._id}>
+                  {env.name} ({env.type === 'PRODUCTION' ? 'Production' : 'Sandbox'})
+                </SelectItem>
+              ))}
+              <button
+                type="button"
+                onClick={() => setShowSandboxDialog(true)}
+                className="w-full flex items-center gap-2 px-2 py-1.5 text-sm text-blue-600 hover:bg-blue-50 rounded-sm"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add sandbox
+              </button>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Badge variant={selectedEnvironment?.type === 'SANDBOX' ? 'secondary' : 'default'} className={selectedEnvironment?.type === 'SANDBOX' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}>
+          {selectedEnvironment?.type === 'SANDBOX' ? 'Sandbox' : 'Production'}
+        </Badge>
+
+        {selectedEnvironment?.type === 'SANDBOX' && (
+          <Button variant="outline" size="sm" className="h-10" onClick={() => setShowPromoteDialog(true)}>
+            Promote
+          </Button>
+        )}
+
+        <div className="w-full max-w-[220px]">
           <Select value={selectedAgency} onValueChange={setSelectedAgency}>
             <SelectTrigger className="h-10">
               <SelectValue placeholder="Agency Picker" />
@@ -232,6 +325,64 @@ export function Header({ currentPage, onPageChange }: HeaderProps) {
           </Select>
         </div>
       </div>
+
+      <Dialog open={showSandboxDialog} onOpenChange={setShowSandboxDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Sandbox Environment</DialogTitle>
+            <DialogDescription>
+              Sandboxes keep their agencies, projects, and hierarchy data separate from production.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="rounded-md border bg-gray-50 p-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-600">Sandbox allowance</span>
+                <strong>{sandboxCount} / {sandboxLimit}</strong>
+              </div>
+              {!canCreateSandbox && (
+                <p className="mt-2 text-amber-700">
+                  Your current plan has reached its sandbox limit. Purchase more sandboxes to create another environment.
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sandboxName">Sandbox Name</Label>
+              <Input
+                id="sandboxName"
+                placeholder={`Sandbox ${sandboxCount + 1}`}
+                value={sandboxName}
+                onChange={(e) => setSandboxName(e.target.value)}
+                disabled={!canCreateSandbox}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSandboxDialog(false)}>Cancel</Button>
+            <Button onClick={handleCreateSandbox} disabled={!canCreateSandbox}>
+              {canCreateSandbox ? 'Create Sandbox' : 'Purchase Required'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showPromoteDialog} onOpenChange={setShowPromoteDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Promote Sandbox To Production</DialogTitle>
+            <DialogDescription>
+              Copy agencies, portfolios, programs, and projects from "{selectedEnvironment?.name}" into Production.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="rounded-md border bg-amber-50 p-3 text-sm text-amber-800">
+            Existing production agencies with the same name will be reused. Sandbox data remains available after promotion.
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPromoteDialog(false)}>Cancel</Button>
+            <Button onClick={handlePromoteSandbox}>Promote To Production</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex items-center gap-4 ml-4">
         {/* Waffle Menu */}

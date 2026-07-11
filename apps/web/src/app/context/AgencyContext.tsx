@@ -2,18 +2,16 @@
 
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { api } from '@/lib/api';
+import { useEnvironmentContext } from '@/app/context/EnvironmentContext';
 
 export interface AgencyInfo {
   id: string;
+  _id?: string;
   name: string;
 }
 
 interface PaginatedAgencies {
   data: AgencyInfo[];
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
 }
 
 interface AgencyContextValue {
@@ -21,13 +19,14 @@ interface AgencyContextValue {
   agencyObjects: AgencyInfo[];
   selectedAgency: string;
   setSelectedAgency: (agency: string) => void;
-  registerAgency: (agency: string) => void;
+  registerAgency: (agency: string | AgencyInfo) => void;
   isLoading: boolean;
 }
 
 const AgencyContext = createContext<AgencyContextValue | undefined>(undefined);
 
 export function AgencyProvider({ children }: { children: ReactNode }) {
+  const { selectedEnvironmentId } = useEnvironmentContext();
   const [agencyObjects, setAgencyObjects] = useState<AgencyInfo[]>([]);
   const [selectedAgency, setSelectedAgency] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
@@ -35,11 +34,23 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
+    if (!selectedEnvironmentId) {
+      setAgencyObjects([]);
+      setSelectedAgency('all');
+      setIsLoading(false);
+      return;
+    }
+
     api
-      .get<PaginatedAgencies>('/agencies')
+      .get<PaginatedAgencies>(`/agencies?environmentId=${selectedEnvironmentId}`)
       .then((result: PaginatedAgencies) => {
         if (!cancelled) {
-          setAgencyObjects(result.data ?? []);
+          const rows = Array.isArray(result) ? result : result.data ?? [];
+          setAgencyObjects(rows.map((agency) => ({
+            id: String(agency.id ?? agency._id ?? agency.name),
+            _id: agency._id,
+            name: agency.name,
+          })));
         }
       })
       .catch(() => {})
@@ -50,16 +61,21 @@ export function AgencyProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [selectedEnvironmentId]);
+
+  useEffect(() => {
+    setSelectedAgency('all');
+  }, [selectedEnvironmentId]);
 
   const agencies = useMemo(() => agencyObjects.map((a) => a.name), [agencyObjects]);
 
-  const registerAgency = (agency: string) => {
-    const name = agency.trim();
+  const registerAgency = (agency: string | AgencyInfo) => {
+    const name = typeof agency === 'string' ? agency.trim() : agency.name.trim();
     if (!name) return;
+    const id = typeof agency === 'string' ? name : String(agency.id ?? agency._id ?? name);
     setAgencyObjects((prev) => {
       if (prev.some((a) => a.name.toLowerCase() === name.toLowerCase())) return prev;
-      return [...prev, { id: name, name }];
+      return [...prev, { id, _id: typeof agency === 'string' ? undefined : agency._id, name }];
     });
   };
 

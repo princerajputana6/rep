@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
   const page = parseInt(searchParams.get('page') ?? '1')
   const limit = parseInt(searchParams.get('limit') ?? '25')
   const ownerCandidates = searchParams.get('ownerCandidates') === 'true'
+  const requestedAgencyId = searchParams.get('agencyId')
 
   // Scope: super admin sees all; a company admin sees everyone in their company
   // (including themselves); a regular member sees only their own agency.
@@ -32,6 +33,19 @@ export async function GET(req: NextRequest) {
     filter.companyId = ctx.companyId
   } else {
     filter.agencyId = ctx.agencyId
+  }
+  if (requestedAgencyId && requestedAgencyId !== 'all') {
+    if (ctx.role === 'COMPANY_ADMIN' && ctx.companyId) {
+      const agency = await Agency.findOne({ _id: requestedAgencyId, companyId: ctx.companyId }).select('_id').lean()
+      if (!agency) return err('Invalid agency', 'VALIDATION', 400)
+      filter.agencyId = requestedAgencyId
+    } else if (ctx.role === 'SUPER_ADMIN') {
+      filter.agencyId = requestedAgencyId
+    } else if (requestedAgencyId === ctx.agencyId) {
+      filter.agencyId = requestedAgencyId
+    } else {
+      return err('Forbidden', 'FORBIDDEN', 403)
+    }
   }
   const search = searchParams.get('search')
   if (search) filter.$or = [

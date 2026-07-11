@@ -8,6 +8,7 @@ import { WelcomeModal } from '@/app/components/layout/WelcomeModal';
 import { BreadcrumbNav } from '@/app/components/layout/BreadcrumbNav';
 import { Toaster } from '@/app/components/ui/sonner';
 import { AgencyProvider } from '@/app/context/AgencyContext';
+import { EnvironmentProvider } from '@/app/context/EnvironmentContext';
 import { AuthProvider, useAuth } from '@/app/context/AuthContext';
 import { NavigationProvider, useNavigation } from '@/app/context/NavigationContext';
 import { SubscriptionProvider } from '@/app/context/SubscriptionContext';
@@ -240,13 +241,15 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AgencyProvider>
-        <SubscriptionProvider>
-          <NavigationProvider>
-            <AppContent />
-          </NavigationProvider>
-        </SubscriptionProvider>
-      </AgencyProvider>
+      <EnvironmentProvider>
+        <AgencyProvider>
+          <SubscriptionProvider>
+            <NavigationProvider>
+              <AppContent />
+            </NavigationProvider>
+          </SubscriptionProvider>
+        </AgencyProvider>
+      </EnvironmentProvider>
     </AuthProvider>
   );
 }

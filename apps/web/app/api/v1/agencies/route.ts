@@ -16,6 +16,7 @@ export async function GET(req: NextRequest) {
   const limit = parseInt(searchParams.get('limit') ?? '25')
   const status = searchParams.get('status')
   const search = searchParams.get('search')
+  const environmentId = searchParams.get('environmentId')
 
   // Scope: super admin sees all; a company admin sees their whole company;
   // a regular member sees only their own agency.
@@ -28,6 +29,7 @@ export async function GET(req: NextRequest) {
     filter._id = ctx.agencyId
   }
   if (status) filter.status = status
+  if (environmentId) filter.environmentId = environmentId
   if (search) filter.$or = [
     { name: { $regex: search, $options: 'i' } },
     { ownerEmail: { $regex: search, $options: 'i' } },
@@ -60,11 +62,17 @@ export async function POST(req: NextRequest) {
     return err('Agency with this email already exists', 'CONFLICT', 409)
   }
 
-  // Default new agencies into the company's production environment.
+  // Default new agencies into the selected environment, falling back to production.
   let environmentId: string | null = null
   if (ctx.companyId) {
-    const prod = await Environment.findOne({ companyId: ctx.companyId, type: 'PRODUCTION' }).select('_id').lean()
-    environmentId = prod ? String(prod._id) : null
+    if (body.environmentId) {
+      const env = await Environment.findOne({ _id: String(body.environmentId), companyId: ctx.companyId, status: 'ACTIVE' }).select('_id').lean()
+      if (!env) return err('Invalid environment', 'VALIDATION', 400)
+      environmentId = String(env._id)
+    } else {
+      const prod = await Environment.findOne({ companyId: ctx.companyId, type: 'PRODUCTION' }).select('_id').lean()
+      environmentId = prod ? String(prod._id) : null
+    }
   }
 
   const agency = await Agency.create({

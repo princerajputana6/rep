@@ -38,6 +38,7 @@ import {
 import { toast } from 'sonner';
 import { useBulkSelection } from '@/app/utils/use-bulk-selection';
 import { BulkOperationsBar, BulkSelectCheckbox } from '@/app/components/common/BulkOperations';
+import { useAgencyContext } from '@/app/context/AgencyContext';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 type ProjectType = 'retainer' | 'fixed' | 'time-and-materials';
@@ -580,7 +581,7 @@ function BoardTab({ projects, setProjects, onOpenProject }: { projects: Project[
 }
 
 // ─── Create Project Tab ───────────────────────────────────────────────────────
-function CreateProjectTab({ templates, onCreated }: { templates: ProjectTemplate[]; onCreated: (p: Project) => void }) {
+function CreateProjectTab({ templates, onCreated, agencyId }: { templates: ProjectTemplate[]; onCreated: (p: Project) => void; agencyId: string | null }) {
   const [step, setStep] = useState(1);
   const [selectedTemplate, setSelectedTemplate] = useState<ProjectTemplate | null>(null);
   const [tagInput, setTagInput] = useState('');
@@ -608,6 +609,7 @@ function CreateProjectTab({ templates, onCreated }: { templates: ProjectTemplate
 
   const handleSubmit = () => {
     if (!form.name || !form.client) { toast.error('Project name and client are required'); return; }
+    if (!agencyId) { toast.error('Select an agency from the header first'); return; }
     const newProject: Project = {
       id: `p${Date.now()}`, name: form.name, description: form.description,
       type: form.type, archetype, status: 'planning',
@@ -626,9 +628,22 @@ function CreateProjectTab({ templates, onCreated }: { templates: ProjectTemplate
       parentProjectId: form.parentProjectId || undefined,
       source: 'Manual',
     };
-    onCreated(newProject);
-    toast.success('Project created!');
-    setStep(1); setForm({ name: '', description: '', type: 'fixed', client: '', agency: '', owner: '', resourcePool: '', budget: '', currency: 'USD', billingType: 'milestone', poNumber: '', startDate: '', endDate: '', approvalWorkflow: false, sharePublic: false, parentProjectId: '', customFormId: '', tags: [], milestones: [] });
+    api.post<Record<string, unknown>>('/projects', {
+      agencyId,
+      name: form.name,
+      description: form.description,
+      type: form.type,
+      budget: parseFloat(form.budget) || 0,
+      startDate: form.startDate || undefined,
+      endDate: form.endDate || undefined,
+      status: 'PLANNING',
+    }).then((created) => {
+      onCreated(mapApiToProject(created));
+      toast.success('Project created!');
+      setStep(1); setForm({ name: '', description: '', type: 'fixed', client: '', agency: '', owner: '', resourcePool: '', budget: '', currency: 'USD', billingType: 'milestone', poNumber: '', startDate: '', endDate: '', approvalWorkflow: false, sharePublic: false, parentProjectId: '', customFormId: '', tags: [], milestones: [] });
+    }).catch((e: Error) => {
+      toast.error(e.message ?? 'Failed to create project');
+    });
   };
 
   const steps = ['Template', 'Basic Info', 'Budget & Billing', 'Team & Access', 'Dates & Milestones', 'Advanced'];
@@ -920,6 +935,31 @@ function TemplatesTab({ templates }: { templates: ProjectTemplate[] }) {
   );
 }
 
+function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-lg border bg-white">
+      <div className="border-b px-4 py-3">
+        <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 p-4">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function DetailField({ label, value }: { label: string; value?: React.ReactNode }) {
+  const empty = value == null || value === '';
+  return (
+    <div className="grid grid-cols-[160px_1fr] gap-3 text-sm">
+      <span className="text-gray-500">{label}</span>
+      <span className={empty ? 'text-blue-600' : 'text-gray-900 font-medium'}>
+        {empty ? '+Add' : value}
+      </span>
+    </div>
+  );
+}
+
 // ─── Project Detail Dialog ─────────────────────────────────────────────────────
 function ProjectDetailDialog({ project, open, onClose, onUpdate }: { project: Project; open: boolean; onClose: () => void; onUpdate: (p: Project) => void }) {
   const [subTab, setSubTab] = useState('overview');
@@ -937,6 +977,9 @@ function ProjectDetailDialog({ project, open, onClose, onUpdate }: { project: Pr
 
   const invoiceTotal = project.invoices.reduce((s, i) => s + i.amount, 0);
   const paidTotal = project.invoices.filter(i => i.status === 'paid').reduce((s, i) => s + i.amount, 0);
+  const euro = (n: number) => fmt(n, 'EUR');
+  const detailDate = (date?: string) => date || 'N/A';
+  const referenceNumber = project.id.replace(/\D/g, '').slice(-6) || '—';
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -969,6 +1012,8 @@ function ProjectDetailDialog({ project, open, onClose, onUpdate }: { project: Pr
         <Tabs value={subTab} onValueChange={setSubTab}>
           <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="details">Project Details</TabsTrigger>
+            <TabsTrigger value="finance">Finance</TabsTrigger>
             <TabsTrigger value="milestones">Milestones</TabsTrigger>
             <TabsTrigger value="expenses">Expenses</TabsTrigger>
             <TabsTrigger value="billing">Billing</TabsTrigger>
@@ -993,6 +1038,129 @@ function ProjectDetailDialog({ project, open, onClose, onUpdate }: { project: Pr
               </div>
             )}
             {project.customFormId && <div className="flex items-center gap-2 text-xs text-gray-600 p-2 border rounded"><FileText className="w-3 h-3" />{project.customFormId} attached</div>}
+          </TabsContent>
+
+          <TabsContent value="details" className="space-y-4 mt-3">
+            <DetailSection title="Project Condition">
+              <DetailField label="Condition Type" value="Progress Status" />
+              <DetailField label="Condition" value={project.riskLevel === 'high' ? 'In Trouble' : project.riskLevel === 'medium' ? 'At Risk' : 'On Target'} />
+            </DetailSection>
+
+            <DetailSection title="Project Dates">
+              <DetailField label="Schedule Mode" value="Start Date" />
+              <DetailField label="Planned Start Date" value={detailDate(project.startDate)} />
+              <DetailField label="Planned Completion Date" value={detailDate(project.endDate)} />
+              <DetailField label="Projected Start Date" value={detailDate(project.startDate)} />
+              <DetailField label="Projected Completion Date" value={detailDate(project.endDate)} />
+              <DetailField label="Actual Start Date" value="N/A" />
+              <DetailField label="Actual Completion Date" value="N/A" />
+            </DetailSection>
+
+            <DetailSection title="Project Stakeholders">
+              <DetailField label="Project Owner" value={project.owner || 'Unassigned'} />
+              <DetailField label="Project Sponsor" />
+              <DetailField label="Resource Manager" />
+              <DetailField label="Converted Issue Originator" />
+            </DetailSection>
+
+            <DetailSection title="Basic Information">
+              <DetailField label="Reference Number" value={referenceNumber} />
+              <DetailField label="Status" value={project.status === 'planning' ? 'New' : project.status} />
+              <DetailField label="URL" value={project.shareableLink} />
+              <DetailField label="Priority" value={project.riskLevel === 'high' ? 'High' : project.riskLevel === 'medium' ? 'Medium' : 'Low'} />
+            </DetailSection>
+
+            <DetailSection title="Project Association">
+              <DetailField label="Portfolio" value={project.parentProjectId || 'Unassigned'} />
+              <DetailField label="Program" />
+              <DetailField label="Group" value={project.agency || 'Unassigned'} />
+              <DetailField label="Company" value={project.client || 'Unassigned'} />
+            </DetailSection>
+
+            <DetailSection title="Working Time">
+              <DetailField label="Planned Hours" value="0 Hours" />
+              <DetailField label="Actual Hours" value="0 Hours" />
+              <DetailField label="Planned Duration" value="0 Days" />
+              <DetailField label="Actual Duration" value="0 Days" />
+            </DetailSection>
+
+            <DetailSection title="Entry And Updates">
+              <DetailField label="Entry Date" value={detailDate(project.startDate)} />
+              <DetailField label="Entered By" value={project.owner || 'Current User'} />
+              <DetailField label="Last Update Date" value={new Date().toLocaleString()} />
+              <DetailField label="Last Updated By" value={project.owner || 'Current User'} />
+            </DetailSection>
+
+            <DetailSection title="Project Details From Maconomy">
+              <DetailField label="Project Number" value={project.poNumber || referenceNumber} />
+              <DetailField label="Project Name" value={project.name} />
+              <DetailField label="Project Manager Name" value={project.owner || 'Unassigned'} />
+              <DetailField label="Project Manager E-Mail" />
+              <DetailField label="Managing Director Name" />
+              <DetailField label="Managing Director E-Mail" />
+              <DetailField label="Criteria 1" />
+              <DetailField label="Criteria 2" />
+              <DetailField label="Criteria 3" />
+              <DetailField label="Customer Reference" value={project.poNumber} />
+              <DetailField label="Maconomy Project Start Date" value={detailDate(project.startDate)} />
+              <DetailField label="Maconomy Project End Date" value={detailDate(project.endDate)} />
+              <DetailField label="Multi-Department" />
+              <DetailField label="Project Radar" />
+            </DetailSection>
+
+            <DetailSection title="Customer Details">
+              <DetailField label="Customer Name Field 1" value={project.client} />
+              <DetailField label="Customer Name Field 2" />
+              <DetailField label="Customer ID" />
+              <DetailField label="End Customer Name" value={project.client} />
+              <DetailField label="End Customer ID" />
+            </DetailSection>
+
+            <DetailSection title="Budget Details">
+              <DetailField label="Budget Manager Name" value={project.owner || 'Unassigned'} />
+              <DetailField label="Budget Manager E-Mail" />
+              <DetailField label="Maconomy Job Number" value={project.poNumber || referenceNumber} />
+              <DetailField label="Maconomy Status" value={project.status === 'completed' ? 'closed' : 'order'} />
+            </DetailSection>
+
+            <DetailSection title="Other Project Details">
+              <DetailField label="Project Folder" value="false" />
+              <DetailField label="Workfront-Project" value="true" />
+              <DetailField label="Add Folder Creation" />
+              <DetailField label="Maconomy Job Number" value={project.poNumber || referenceNumber} />
+              <DetailField label="Folder Link" />
+            </DetailSection>
+          </TabsContent>
+
+          <TabsContent value="finance" className="space-y-4 mt-3">
+            <DetailSection title="Budget">
+              <DetailField label="Currency" value={project.currency || 'EUR'} />
+              <DetailField label="Budget" value={euro(project.budget)} />
+            </DetailSection>
+
+            <DetailSection title="Benefit">
+              <DetailField label="Planned Benefit" value={euro(0)} />
+              <DetailField label="Actual Benefit" value={euro(0)} />
+            </DetailSection>
+
+            <DetailSection title="Revenue">
+              <DetailField label="Actual Revenue" value={euro(paidTotal)} />
+              <DetailField label="Planned Revenue" value={euro(project.revenueSchedule.reduce((s, r) => s + r.amount, 0))} />
+              <DetailField label="Fixed Revenue" value={euro(project.type === 'fixed' ? project.budget : 0)} />
+              <DetailField label="Billed Revenue" value={euro(invoiceTotal)} />
+            </DetailSection>
+
+            <DetailSection title="Performance Metrics">
+              <DetailField label="Performance Index Method" value="Hour-Based" />
+              <DetailField label="CPI / SPI / CSI" value="1 / 1 / 1" />
+              <DetailField label="Estimate At Completion" value="0 Hrs" />
+            </DetailSection>
+
+            <DetailSection title="Cost">
+              <DetailField label="Planned Cost" value={euro(project.budget)} />
+              <DetailField label="Actual Cost" value={euro(project.expenses.reduce((s, e) => s + e.amount, 0))} />
+              <DetailField label="Fixed Cost" value={euro(project.type === 'fixed' ? project.budget : 0)} />
+            </DetailSection>
           </TabsContent>
 
           <TabsContent value="milestones" className="mt-3">
@@ -1171,6 +1339,12 @@ function mapApiToProject(p: Record<string, unknown>): Project {
 }
 
 export function Projects() {
+  const { selectedAgency, agencyObjects } = useAgencyContext();
+  const selectedAgencyObject = useMemo(
+    () => agencyObjects.find((agency) => agency.name === selectedAgency || agency.id === selectedAgency) ?? null,
+    [agencyObjects, selectedAgency]
+  );
+  const selectedAgencyId = selectedAgency === 'all' ? null : selectedAgencyObject?.id ?? null;
   const [activeTab, setActiveTab] = useState('board');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
@@ -1178,17 +1352,23 @@ export function Projects() {
 
   useEffect(() => {
     setLoadingProjects(true);
-    api.get<Record<string, unknown>[]>('/projects')
+    if (!selectedAgencyId) {
+      setProjects([]);
+      setLoadingProjects(false);
+      return;
+    }
+    api.get<Record<string, unknown>[]>(`/projects?agencyId=${selectedAgencyId}`)
       .then((rows) => setProjects((Array.isArray(rows) ? rows : []).map(mapApiToProject)))
       .catch((e: Error) => toast.error(e.message ?? 'Failed to load projects'))
       .finally(() => setLoadingProjects(false));
-  }, []);
+  }, [selectedAgencyId]);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
   const [quickName, setQuickName] = useState('');
 
   const handleQuickCreate = () => {
     if (!quickName.trim()) return;
+    if (!selectedAgencyId) { toast.error('Select an agency from the header first'); return; }
     const newProject: Project = {
       id: `p${Date.now()}`, name: quickName.trim(), description: '',
       type: 'fixed', archetype: 'Strategic', status: 'planning',
@@ -1202,10 +1382,18 @@ export function Projects() {
       approvalWorkflow: false, shareableLink: '', customFormId: '',
       source: 'Quick Create',
     };
-    setProjects(prev => [newProject, ...prev]);
-    toast.success(`Project "${quickName.trim()}" created — add details anytime`);
-    setQuickName('');
-    setQuickCreateOpen(false);
+    api.post<Record<string, unknown>>('/projects', {
+      agencyId: selectedAgencyId,
+      name: quickName.trim(),
+      status: 'PLANNING',
+    }).then((created) => {
+      setProjects(prev => [mapApiToProject(created), ...prev]);
+      toast.success(`Project "${quickName.trim()}" created — add details anytime`);
+      setQuickName('');
+      setQuickCreateOpen(false);
+    }).catch((e: Error) => {
+      toast.error(e.message ?? 'Failed to create project');
+    });
   };
 
   const handleCreated = (p: Project) => {
@@ -1228,10 +1416,10 @@ export function Projects() {
         </div>
         <div className="flex gap-2 items-center flex-wrap">
           <Button variant="outline" size="sm" onClick={() => toast.success('Exported!')}><Download className="w-4 h-4 mr-1" />Export</Button>
-          <Button variant="outline" size="sm" className="gap-1.5 border-dashed" onClick={() => setQuickCreateOpen(true)}>
+          <Button variant="outline" size="sm" className="gap-1.5 border-dashed" onClick={() => setQuickCreateOpen(true)} disabled={!selectedAgencyId}>
             <Zap className="w-3.5 h-3.5 text-amber-500" />Quick Add
           </Button>
-          <Button size="sm" onClick={() => setActiveTab('create')}><Plus className="w-4 h-4 mr-1" />New Project</Button>
+          <Button size="sm" onClick={() => setActiveTab('create')} disabled={!selectedAgencyId}><Plus className="w-4 h-4 mr-1" />New Project</Button>
         </div>
 
         {/* Quick Create Dialog — name only */}
@@ -1274,7 +1462,7 @@ export function Projects() {
         </TabsContent>
 
         <TabsContent value="create" className="mt-4">
-          <CreateProjectTab templates={templates} onCreated={handleCreated} />
+          <CreateProjectTab templates={templates} onCreated={handleCreated} agencyId={selectedAgencyId} />
         </TabsContent>
 
         <TabsContent value="templates" className="mt-4">

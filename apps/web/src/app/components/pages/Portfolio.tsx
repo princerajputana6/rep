@@ -25,7 +25,8 @@ import {
   PieChart, Pie, Legend,
 } from 'recharts';
 import { toast } from 'sonner';
-import { portfoliosApi, programsApi } from '@/lib/api';
+import { api, portfoliosApi, programsApi } from '@/lib/api';
+import { useAgencyContext } from '@/app/context/AgencyContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -46,7 +47,11 @@ interface Portfolio {
 }
 
 
-const OWNERS = ['Alex Chen', 'Maria Lopez', 'James Wu', 'Priya Patel', 'Sara Kim', 'Tom Reeves'];
+interface UserOption {
+  _id: string;
+  name: string;
+  email: string;
+}
 
 // ─── Dummy Data ───────────────────────────────────────────────────────────────
 
@@ -304,19 +309,23 @@ function PortfolioCard({
 
 // ─── Create Portfolio Dialog ──────────────────────────────────────────────────
 
-function CreatePortfolioDialog({ open, onClose, onCreated }: {
+function CreatePortfolioDialog({ open, onClose, onCreated, agencyId, owners }: {
   open: boolean; onClose: () => void;
   onCreated: (p: Portfolio) => void;
+  agencyId: string | null;
+  owners: UserOption[];
 }) {
   const [form, setForm] = useState({ name: '', description: '', owner: '', strategic: 'Growth' as Portfolio['strategic'], startDate: '', endDate: '' });
   const set = (k: string, v: string) => setForm(prev => ({ ...prev, [k]: v }));
 
   const handleCreate = () => {
     if (!form.name) { toast.error('Portfolio name is required'); return; }
+    if (!agencyId) { toast.error('Select an agency from the header first'); return; }
     portfoliosApi.create({
+      agencyId,
       name: form.name,
       description: form.description,
-      owner: form.owner,
+      owner: form.owner || 'Unassigned',
       strategicTheme: form.strategic,
       startDate: form.startDate || undefined,
       endDate: form.endDate || undefined,
@@ -366,7 +375,13 @@ function CreatePortfolioDialog({ open, onClose, onCreated }: {
             <div className="space-y-1"><Label>Owner</Label>
               <Select value={form.owner} onValueChange={v => set('owner', v)}>
                 <SelectTrigger><SelectValue placeholder="Select owner" /></SelectTrigger>
-                <SelectContent>{OWNERS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {owners.length === 0 ? (
+                    <SelectItem value="Unassigned">Unassigned</SelectItem>
+                  ) : owners.map(o => (
+                    <SelectItem key={o._id} value={o.name}>{o.name} ({o.email})</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div className="space-y-1"><Label>Strategic Theme</Label>
@@ -393,6 +408,13 @@ function CreatePortfolioDialog({ open, onClose, onCreated }: {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function Portfolio() {
+  const { selectedAgency, agencyObjects } = useAgencyContext();
+  const selectedAgencyObject = useMemo(
+    () => agencyObjects.find((agency) => agency.name === selectedAgency || agency.id === selectedAgency) ?? null,
+    [agencyObjects, selectedAgency]
+  );
+  const selectedAgencyId = selectedAgency === 'all' ? null : selectedAgencyObject?.id ?? null;
+  const [owners, setOwners] = useState<UserOption[]>([]);
   const [portfolios, setPortfolios] = useState<Portfolio[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -401,7 +423,13 @@ export function Portfolio() {
   const load = () => {
     setLoading(true);
     setError(null);
-    portfoliosApi.list().then(result => {
+    if (!selectedAgencyId) {
+      setPortfolios([]);
+      setLoading(false);
+      return;
+    }
+    const filters = selectedAgencyId ? { agencyId: selectedAgencyId } : undefined;
+    portfoliosApi.list(filters).then(result => {
       const rows = result.data ?? []
       const mapped: Portfolio[] = rows.map(p => ({
         id: String((p as any)._id ?? p.id),
@@ -440,7 +468,21 @@ export function Portfolio() {
     });
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    setProgramsByPortfolio({});
+    setExpandedIds(new Set());
+    load();
+  }, [selectedAgencyId]);
+
+  useEffect(() => {
+    if (!selectedAgencyId) {
+      setOwners([]);
+      return;
+    }
+    api.get<{ data: UserOption[] }>(`/users?agencyId=${selectedAgencyId}&limit=100`)
+      .then((result) => setOwners(result.data ?? []))
+      .catch(() => setOwners([]));
+  }, [selectedAgencyId]);
   const [search, setSearch] = useState('');
   const [stratFilter, setStratFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -561,7 +603,7 @@ export function Portfolio() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => toast.success('Exported!')}><Download className="w-4 h-4 mr-1" />Export</Button>
-          <Button size="sm" onClick={() => setCreateOpen(true)}><Plus className="w-4 h-4 mr-1" />New Portfolio</Button>
+          <Button size="sm" onClick={() => setCreateOpen(true)} disabled={!selectedAgencyId}><Plus className="w-4 h-4 mr-1" />New Portfolio</Button>
         </div>
       </div>
 
@@ -640,8 +682,8 @@ export function Portfolio() {
           {filtered.length === 0 ? (
             <div className="col-span-2 text-center py-16 text-gray-400">
               <Network className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              <p className="font-medium">No portfolios found</p>
-              <p className="text-sm mt-1">Create your first portfolio to get started.</p>
+              <p className="font-medium">{selectedAgencyId ? 'No portfolios found' : 'Select an agency to view portfolios'}</p>
+              <p className="text-sm mt-1">{selectedAgencyId ? 'Create your first portfolio to get started.' : 'Use the agency picker in the header to scope this module.'}</p>
             </div>
           ) : filtered.map(p => (
             <PortfolioCard
@@ -794,6 +836,8 @@ export function Portfolio() {
       <CreatePortfolioDialog
         open={createOpen} onClose={() => setCreateOpen(false)}
         onCreated={p => setPortfolios(prev => [p, ...prev])}
+        agencyId={selectedAgencyId}
+        owners={owners}
       />
 
       <CreateProgramDialog

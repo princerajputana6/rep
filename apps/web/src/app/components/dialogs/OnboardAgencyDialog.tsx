@@ -16,6 +16,8 @@ import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import { networkService, type Agency } from '@/app/services/networkService'
+import { useAgencyContext } from '@/app/context/AgencyContext'
+import { useEnvironmentContext } from '@/app/context/EnvironmentContext'
 
 interface OnboardAgencyDialogProps {
   open: boolean
@@ -26,6 +28,8 @@ const DEFAULT_AGENCY_TYPES = ['Profit Center', 'Cost Center', 'Head-Quarter', 'R
 const ADD_NEW = '__add_new_agency_type__'
 
 export function OnboardAgencyDialog({ open, onOpenChange }: OnboardAgencyDialogProps) {
+  const { registerAgency } = useAgencyContext()
+  const { selectedEnvironmentId } = useEnvironmentContext()
   // Form state
   const [name, setName] = useState('')
   const [owner, setOwner] = useState('')
@@ -101,13 +105,15 @@ export function OnboardAgencyDialog({ open, onOpenChange }: OnboardAgencyDialogP
         })
         toast.success(`Sub-agency "${name}" created.`)
       } else {
-        await api.post('/agencies', {
+        const created = await api.post<Agency>('/agencies', {
           name: name.trim(),
           owner: owner.trim(),
           ownerEmail: ownerEmail.trim(),
           totalResources: Number(totalResources) || 0,
           participationLevel,
+          environmentId: selectedEnvironmentId || undefined,
         })
+        registerAgency({ id: created._id, _id: created._id, name: created.name })
         toast.success(`Agency "${name}" onboarded.`)
       }
       reset()

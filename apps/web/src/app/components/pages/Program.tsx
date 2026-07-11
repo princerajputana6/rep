@@ -23,7 +23,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { toast } from 'sonner';
-import { programsApi } from '@/lib/api';
+import { api, portfoliosApi, programsApi } from '@/lib/api';
+import { useAgencyContext } from '@/app/context/AgencyContext';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -43,14 +44,8 @@ interface Program {
 }
 
 
-const PORTFOLIOS = [
-  { id: 'pf1', name: 'Digital Transformation' },
-  { id: 'pf2', name: 'Brand & Marketing Excellence' },
-  { id: 'pf3', name: 'Revenue Operations' },
-  { id: 'pf4', name: 'Innovation Lab' },
-];
-
-const OWNERS = ['Alex Chen', 'Maria Lopez', 'James Wu', 'Sara Kim', 'Tom Reeves', 'Priya Patel'];
+interface UserOption { _id: string; name: string; email: string }
+interface PortfolioOption { id: string; name: string }
 
 // ─── Dummy Data ───────────────────────────────────────────────────────────────
 
@@ -324,9 +319,12 @@ function ProgramCard({
 
 // ─── Create Program Dialog ─────────────────────────────────────────────────────
 
-function CreateProgramDialog({ open, onClose, onCreated }: {
+function CreateProgramDialog({ open, onClose, onCreated, agencyId, owners, portfolios }: {
   open: boolean; onClose: () => void;
   onCreated: (p: Program) => void;
+  agencyId: string | null;
+  owners: UserOption[];
+  portfolios: PortfolioOption[];
 }) {
   const [form, setForm] = useState({
     name: '', description: '', owner: '', portfolioId: '', objective: '', startDate: '', endDate: '',
@@ -335,12 +333,15 @@ function CreateProgramDialog({ open, onClose, onCreated }: {
 
   const handleCreate = () => {
     if (!form.name) { toast.error('Program name is required'); return; }
-    const portfolio = PORTFOLIOS.find(p => p.id === form.portfolioId);
+    if (!agencyId) { toast.error('Select an agency from the header first'); return; }
+    const portfolioId = form.portfolioId === '__none__' ? '' : form.portfolioId;
+    const portfolio = portfolios.find(p => p.id === portfolioId);
     programsApi.create({
+      agencyId,
       name: form.name,
       description: form.description,
-      owner: form.owner,
-      portfolioId: form.portfolioId || undefined,
+      owner: form.owner || 'Unassigned',
+      portfolioId: portfolioId || undefined,
       startDate: form.startDate || undefined,
       endDate: form.endDate || undefined,
       status: 'planning',
@@ -392,7 +393,13 @@ function CreateProgramDialog({ open, onClose, onCreated }: {
             <div className="space-y-1"><Label>Program Owner</Label>
               <Select value={form.owner} onValueChange={v => set('owner', v)}>
                 <SelectTrigger><SelectValue placeholder="Select owner" /></SelectTrigger>
-                <SelectContent>{OWNERS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {owners.length === 0 ? (
+                    <SelectItem value="Unassigned">Unassigned</SelectItem>
+                  ) : owners.map(o => (
+                    <SelectItem key={o._id} value={o.name}>{o.name} ({o.email})</SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
             <div className="space-y-1"><Label>Parent Portfolio <span className="text-gray-400 font-normal">(optional)</span></Label>
@@ -400,7 +407,7 @@ function CreateProgramDialog({ open, onClose, onCreated }: {
                 <SelectTrigger><SelectValue placeholder="No portfolio" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__none__">No portfolio</SelectItem>
-                  {PORTFOLIOS.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                  {portfolios.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -420,6 +427,14 @@ function CreateProgramDialog({ open, onClose, onCreated }: {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function ProgramManagement() {
+  const { selectedAgency, agencyObjects } = useAgencyContext();
+  const selectedAgencyObject = useMemo(
+    () => agencyObjects.find((agency) => agency.name === selectedAgency || agency.id === selectedAgency) ?? null,
+    [agencyObjects, selectedAgency]
+  );
+  const selectedAgencyId = selectedAgency === 'all' ? null : selectedAgencyObject?.id ?? null;
+  const [owners, setOwners] = useState<UserOption[]>([]);
+  const [portfolioOptions, setPortfolioOptions] = useState<PortfolioOption[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -428,10 +443,15 @@ export function ProgramManagement() {
   const load = () => {
     setLoading(true);
     setError(null);
-    programsApi.list().then(result => {
+    if (!selectedAgencyId) {
+      setPrograms([]);
+      setLoading(false);
+      return;
+    }
+    programsApi.list({ agencyId: selectedAgencyId }).then(result => {
       const rows = result.data ?? []
       const mapped: Program[] = rows.map(p => ({
-        id: p.id,
+        id: String((p as any)._id ?? p.id),
         name: p.name,
         description: p.description ?? '',
         owner: p.owner,
@@ -455,7 +475,27 @@ export function ProgramManagement() {
     });
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    setExpandedIds(new Set());
+    load();
+  }, [selectedAgencyId]);
+
+  useEffect(() => {
+    if (!selectedAgencyId) {
+      setOwners([]);
+      setPortfolioOptions([]);
+      return;
+    }
+    api.get<{ data: UserOption[] }>(`/users?agencyId=${selectedAgencyId}&limit=100`)
+      .then((result) => setOwners(result.data ?? []))
+      .catch(() => setOwners([]));
+    portfoliosApi.list({ agencyId: selectedAgencyId })
+      .then((result) => setPortfolioOptions((result.data ?? []).map((p: any) => ({
+        id: String(p._id ?? p.id),
+        name: p.name,
+      }))))
+      .catch(() => setPortfolioOptions([]));
+  }, [selectedAgencyId]);
   const [search, setSearch] = useState('');
   const [portfolioFilter, setPortfolioFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -506,7 +546,7 @@ export function ProgramManagement() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={() => toast.success('Exported!')}><Download className="w-4 h-4 mr-1" />Export</Button>
-          <Button size="sm" className="bg-purple-600 hover:bg-purple-700" onClick={() => setCreateOpen(true)}><Plus className="w-4 h-4 mr-1" />New Program</Button>
+          <Button size="sm" className="bg-purple-600 hover:bg-purple-700" onClick={() => setCreateOpen(true)} disabled={!selectedAgencyId}><Plus className="w-4 h-4 mr-1" />New Program</Button>
         </div>
       </div>
 
@@ -534,7 +574,7 @@ export function ProgramManagement() {
           <SelectTrigger className="h-9 w-52"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Portfolios</SelectItem>
-            {PORTFOLIOS.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+            {portfolioOptions.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -583,8 +623,8 @@ export function ProgramManagement() {
           {filtered.length === 0 ? (
             <div className="col-span-3 text-center py-16 text-gray-400">
               <Layers className="w-10 h-10 mx-auto mb-3 opacity-30" />
-              <p className="font-medium">No programs found</p>
-              <p className="text-sm mt-1">Create your first program to get started.</p>
+              <p className="font-medium">{selectedAgencyId ? 'No programs found' : 'Select an agency to view programs'}</p>
+              <p className="text-sm mt-1">{selectedAgencyId ? 'Create your first program to get started.' : 'Use the agency picker in the header to scope this module.'}</p>
             </div>
           ) : filtered.map(p => (
             <ProgramCard key={p.id} program={p} expanded={expandedIds.has(p.id)} onToggleExpand={() => toggleExpand(p.id)} />
@@ -614,6 +654,9 @@ export function ProgramManagement() {
       <CreateProgramDialog
         open={createOpen} onClose={() => setCreateOpen(false)}
         onCreated={p => setPrograms(prev => [p, ...prev])}
+        agencyId={selectedAgencyId}
+        owners={owners}
+        portfolios={portfolioOptions}
       />
     </div>
   );

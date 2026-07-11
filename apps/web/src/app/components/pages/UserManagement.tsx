@@ -15,7 +15,12 @@ import { Label } from '@/app/components/ui/label'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/app/components/ui/select'
-import { Search, Plus, Edit, MoreVertical, Loader2, Users as UsersIcon } from 'lucide-react'
+import {
+  Search, Plus, Edit, MoreVertical, Loader2, Users as UsersIcon, User as UserIcon,
+  Mail, Phone, Building2, CalendarDays, MessageSquare, Network, FileText,
+  BriefcaseBusiness,
+} from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/app/components/ui/tabs'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu'
@@ -32,6 +37,7 @@ interface User {
   status?: string
   active?: boolean
   createdAt: string
+  updatedAt?: string
 }
 
 const SYSTEM_ROLES = ['VIEWER', 'MEMBER', 'MANAGER']
@@ -44,6 +50,7 @@ export function UserManagement() {
   const [filterAgency, setFilterAgency] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
   const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<User | null>(null)
 
   // Create form state
   const [name, setName] = useState('')
@@ -168,7 +175,7 @@ export function UserManagement() {
                 {filtered.map((u) => {
                   const isActive = u.active !== false && u.status !== 'INACTIVE'
                   return (
-                    <TableRow key={u._id}>
+                    <TableRow key={u._id} className="cursor-pointer" onClick={() => setSelectedUser(u)}>
                       <TableCell>
                         <div>
                           <div className="font-medium text-gray-900">{u.name}</div>
@@ -181,9 +188,9 @@ export function UserManagement() {
                       <TableCell className="text-sm">{new Date(u.createdAt).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild><Button variant="ghost" size="sm"><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
+                          <DropdownMenuTrigger asChild><Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}><MoreVertical className="w-4 h-4" /></Button></DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem><Edit className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSelectedUser(u) }}><Edit className="w-4 h-4 mr-2" /> View Details</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -230,6 +237,12 @@ export function UserManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <UserProfileDialog
+        user={selectedUser}
+        agencyName={selectedUser ? agencyMap[selectedUser.agencyId]?.name : undefined}
+        onClose={() => setSelectedUser(null)}
+      />
     </div>
   )
 }
@@ -237,5 +250,217 @@ export function UserManagement() {
 function Stat({ label, value, valueClass = 'text-gray-900' }: { label: string; value: number | string; valueClass?: string }) {
   return (
     <Card><CardContent className="p-4"><div className="text-sm text-gray-600">{label}</div><div className={`text-2xl font-semibold ${valueClass}`}>{value}</div></CardContent></Card>
+  )
+}
+
+function UserProfileDialog({ user, agencyName, onClose }: { user: User | null; agencyName?: string; onClose: () => void }) {
+  const [tab, setTab] = useState('details')
+  if (!user) return null
+
+  const [firstName, ...rest] = user.name.split(' ')
+  const lastName = rest.join(' ')
+  const isActive = user.active !== false && user.status !== 'INACTIVE' && user.status !== 'DISABLED'
+  const initials = user.name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase()
+
+  return (
+    <Dialog open={!!user} onOpenChange={(open) => { if (!open) onClose() }}>
+      <DialogContent className="max-w-6xl max-h-[92vh] overflow-hidden p-0">
+        <div className="border-b bg-white">
+          <div className="flex items-center justify-between gap-4 px-6 py-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <div className="w-14 h-14 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-lg font-semibold">
+                {initials || <UserIcon className="w-6 h-6" />}
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">User</div>
+                <DialogTitle className="text-2xl truncate">{user.name}</DialogTitle>
+                <DialogDescription className="flex items-center gap-2 mt-1">
+                  <Badge variant={isActive ? 'default' : 'secondary'}>{isActive ? 'Active' : 'Inactive'}</Badge>
+                  <Badge variant="outline">{user.role}</Badge>
+                </DialogDescription>
+              </div>
+            </div>
+            <div className="hidden md:grid grid-cols-3 gap-8 text-sm pr-8">
+              <TopFact label="Email Address" value={user.email} />
+              <TopFact label="Phone number" value="N/A" />
+              <TopFact label="Teams" value={agencyName ?? '—'} />
+            </div>
+          </div>
+        </div>
+
+        <Tabs value={tab} onValueChange={setTab} className="grid grid-cols-[220px_1fr] min-h-[680px]">
+          <TabsList className="h-full flex-col items-stretch justify-start rounded-none border-r bg-gray-50 p-2">
+            <UserTab value="details" icon={<FileText className="w-4 h-4" />} label="Details" />
+            <UserTab value="org" icon={<Network className="w-4 h-4" />} label="Org Chart" />
+            <UserTab value="timeoff" icon={<CalendarDays className="w-4 h-4" />} label="Time Off" />
+            <UserTab value="forms" icon={<BriefcaseBusiness className="w-4 h-4" />} label="Custom Forms" />
+            <UserTab value="updates" icon={<MessageSquare className="w-4 h-4" />} label="Updates" />
+          </TabsList>
+
+          <div className="overflow-y-auto bg-gray-50 p-8">
+            <TabsContent value="details" className="mt-0 space-y-6">
+              <h2 className="text-xl font-semibold text-gray-900">Personal Info</h2>
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                <UserSection title="Basic Information">
+                  <UserField label="First name(s)" value={firstName || user.name} />
+                  <UserField label="Last name" value={lastName} />
+                  <UserField label="Email address" value={user.email} wide />
+                </UserSection>
+                <UserSection title="Job Info">
+                  <UserField label="Title" />
+                  <UserField label="Talk to Me About" />
+                  <UserField label="Role" value={user.role} />
+                  <UserField label="Agency" value={agencyName} />
+                </UserSection>
+                <UserSection title="Contact Info" className="xl:col-span-1">
+                  <UserField label="Phone number" />
+                  <UserField label="Extension" />
+                  <UserField label="Mobile phone number" />
+                  <UserField label="Address" />
+                  <UserField label="City" />
+                  <UserField label="State" />
+                  <UserField label="Postal code" />
+                  <UserField label="Country" />
+                </UserSection>
+                <UserSection title="Account Info">
+                  <UserField label="Status" value={user.status ?? 'ACTIVE'} />
+                  <UserField label="Created" value={new Date(user.createdAt).toLocaleString()} />
+                  <UserField label="Last Update Date" value={user.updatedAt ? new Date(user.updatedAt).toLocaleString() : undefined} />
+                  <UserField label="User ID" value={user._id} />
+                </UserSection>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="org" className="mt-0">
+              <h2 className="text-xl font-semibold text-gray-900 mb-8">Org Chart</h2>
+              <div className="flex flex-col items-center gap-10">
+                <OrgCard muted label="+ Add a Manager" />
+                <div className="h-10 w-px bg-gray-300" />
+                <OrgCard name={user.name} email={user.email} active />
+                <div className="h-10 w-px bg-gray-300" />
+                <OrgCard muted label="+ Add Direct Report" />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="timeoff" className="mt-0">
+              <div className="flex items-center justify-center gap-8 mb-6">
+                <Button variant="ghost" size="sm">‹</Button>
+                <h2 className="text-xl font-semibold text-gray-900">{user.name.split(' ')[0]}'s Personal Time Off</h2>
+                <Button variant="ghost" size="sm">›</Button>
+              </div>
+              <YearCalendar year={2026} />
+            </TabsContent>
+
+            <TabsContent value="forms" className="mt-0 space-y-4">
+              <h2 className="text-xl font-semibold text-gray-900">Workday Data</h2>
+              <UserSection title="Workday Data">
+                <UserField label="Company ID" value="1210" />
+                <UserField label="Employee ID" />
+                <UserField label="Persotool ID" value={user._id} />
+                <UserField label="Given Name" value={firstName || user.name} />
+                <UserField label="Family Name" value={lastName} />
+                <UserField label="Email Primary Work" value={user.email.toUpperCase()} />
+                <UserField label="Scheduled Weekly Hours" value="20" />
+                <UserField label="Monday" value="5" />
+                <UserField label="Tuesday" value="5" />
+                <UserField label="Wednesday" value="0" />
+                <UserField label="Thursday" value="5" />
+                <UserField label="Friday" value="5" />
+              </UserSection>
+            </TabsContent>
+
+            <TabsContent value="updates" className="mt-0 space-y-4">
+              <div className="flex justify-between gap-4">
+                <div className="flex gap-6 text-sm font-medium">
+                  <button className="border-b-2 border-gray-900 pb-2">Comments</button>
+                  <button className="text-gray-500 pb-2">System activity</button>
+                  <button className="text-gray-500 pb-2">All (read-only)</button>
+                </div>
+                <div className="relative w-56">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <Input className="pl-9 h-9" />
+                </div>
+              </div>
+              <Card><CardContent className="p-4">
+                <Label>New comment</Label>
+                <div className="mt-2 flex gap-3">
+                  <div className="w-9 h-9 rounded-full bg-blue-100" />
+                  <Input placeholder={`Message ${user.name} or the team...`} />
+                </div>
+              </CardContent></Card>
+              <Card><CardContent className="p-5 text-sm space-y-3">
+                <div className="flex gap-3">
+                  <div className="w-10 h-10 rounded-full bg-blue-100" />
+                  <div>
+                    <p className="font-medium">{user.name} <span className="text-gray-400 font-normal">· {new Date(user.createdAt).toLocaleString()}</span></p>
+                    <p className="text-gray-600 mt-2">User profile created and assigned to {agencyName ?? 'an agency'}.</p>
+                    <div className="flex gap-4 mt-4 text-gray-600"><button>Like</button><button>Reply</button></div>
+                  </div>
+                </div>
+              </CardContent></Card>
+            </TabsContent>
+          </div>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function TopFact({ label, value }: { label: string; value: string }) {
+  return <div><div className="text-xs text-gray-500">{label}</div><div className="mt-2 text-sm text-gray-900">{value}</div></div>
+}
+
+function UserTab({ value, icon, label }: { value: string; icon: React.ReactNode; label: string }) {
+  return <TabsTrigger value={value} className="justify-start gap-2 data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">{icon}{label}</TabsTrigger>
+}
+
+function UserSection({ title, children, className = '' }: { title: string; children: React.ReactNode; className?: string }) {
+  return <Card className={className}><CardHeader><CardTitle className="text-base">{title}</CardTitle></CardHeader><CardContent className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">{children}</CardContent></Card>
+}
+
+function UserField({ label, value, wide = false }: { label: string; value?: string; wide?: boolean }) {
+  const empty = value == null || value === ''
+  return <div className={wide ? 'md:col-span-2' : ''}><div className="text-xs text-gray-500 mb-2">{label}</div><div className={empty ? 'text-blue-600 font-semibold text-sm' : 'text-sm text-gray-900'}>{empty ? '+Add' : value}</div></div>
+}
+
+function OrgCard({ name, email, muted, active, label }: { name?: string; email?: string; muted?: boolean; active?: boolean; label?: string }) {
+  return (
+    <div className={`w-40 rounded-lg border bg-white p-4 text-center shadow-sm ${active ? 'border-blue-300' : ''}`}>
+      <div className={`mx-auto mb-3 w-20 h-20 rounded-full ${muted ? 'bg-gray-100' : 'bg-blue-100'} flex items-center justify-center`}>
+        <UserIcon className={`w-10 h-10 ${muted ? 'text-gray-300' : 'text-blue-300'}`} />
+      </div>
+      <div className="text-sm font-semibold text-gray-900">{name ?? label}</div>
+      {email && <Mail className="w-4 h-4 text-blue-600 mx-auto mt-4" />}
+    </div>
+  )
+}
+
+function YearCalendar({ year }: { year: number }) {
+  const highlighted = new Set(['2026-01-02', '2026-01-03', '2026-01-05', '2026-01-06', '2026-02-03', '2026-02-04', '2026-04-13', '2026-04-14', '2026-04-15', '2026-04-16', '2026-04-17', '2026-04-18', '2026-06-08', '2026-06-09', '2026-06-10', '2026-06-11', '2026-06-12', '2026-08-10', '2026-08-11', '2026-08-12', '2026-08-13', '2026-08-14'])
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-4 gap-8 max-w-4xl mx-auto">
+      {Array.from({ length: 12 }, (_, month) => <MonthCalendar key={month} year={year} month={month} highlighted={highlighted} />)}
+    </div>
+  )
+}
+
+function MonthCalendar({ year, month, highlighted }: { year: number; month: number; highlighted: Set<string> }) {
+  const first = new Date(year, month, 1)
+  const days = new Date(year, month + 1, 0).getDate()
+  const blanks = first.getDay()
+  const monthName = first.toLocaleString('default', { month: 'long' })
+  return (
+    <div>
+      <h3 className="text-lg font-semibold text-center mb-3">{monthName}</h3>
+      <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-gray-500 mb-1">{['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <div key={`${d}-${i}`}>{d}</div>)}</div>
+      <div className="grid grid-cols-7 gap-1 text-center text-xs">
+        {Array.from({ length: blanks }, (_, i) => <div key={`b-${i}`} />)}
+        {Array.from({ length: days }, (_, i) => {
+          const day = i + 1
+          const key = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+          return <div key={day} className={`py-1 rounded ${highlighted.has(key) ? 'bg-blue-100 ring-1 ring-blue-400 text-blue-700 font-semibold' : 'text-gray-800'}`}>{day}</div>
+        })}
+      </div>
+    </div>
   )
 }
