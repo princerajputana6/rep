@@ -1,8 +1,11 @@
 import { NextRequest } from 'next/server'
 import connectDB from '@/lib/mongodb'
 import { User } from '@/lib/models/User'
+import { Agency } from '@/lib/models/Agency'
 import { hashPassword, generateTempPassword } from '@/lib/auth/session'
 import { ok, err, requireAuth, isNextResponse } from '@/lib/api-helpers'
+
+const MEMBER_ROLES = ['MANAGER', 'MEMBER', 'VIEWER'] as const
 
 export async function GET(req: NextRequest) {
   const ctx = await requireAuth()
@@ -12,6 +15,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const page = parseInt(searchParams.get('page') ?? '1')
   const limit = parseInt(searchParams.get('limit') ?? '25')
+  const ownerCandidates = searchParams.get('ownerCandidates') === 'true'
 
   // Scope: super admin sees all; a company admin sees everyone in their company
   // (including themselves); a regular member sees only their own agency.
@@ -28,6 +32,10 @@ export async function GET(req: NextRequest) {
     { name: { $regex: search, $options: 'i' } },
     { email: { $regex: search, $options: 'i' } },
   ]
+  if (ownerCandidates) {
+    filter.role = { $in: ['COMPANY_ADMIN', 'MANAGER'] }
+    filter.status = { $ne: 'DISABLED' }
+  }
 
   const skip = (page - 1) * limit
   const [data, total] = await Promise.all([
@@ -45,8 +53,28 @@ export async function POST(req: NextRequest) {
   await connectDB()
   const body = await req.json()
 
+  if (!['SUPER_ADMIN', 'COMPANY_ADMIN'].includes(ctx.role)) {
+    return err('Forbidden', 'FORBIDDEN', 403)
+  }
+
   const email = String(body.email ?? '').toLowerCase().trim()
   if (!email) return err('Email is required', 'VALIDATION', 400)
+
+  const name = String(body.name ?? '').trim()
+  if (!name) return err('Name is required', 'VALIDATION', 400)
+
+  const role = String(body.role ?? 'VIEWER').toUpperCase()
+  if (!MEMBER_ROLES.includes(role as (typeof MEMBER_ROLES)[number])) {
+    return err('Invalid role', 'VALIDATION', 400)
+  }
+
+  const agencyId = String(body.agencyId ?? '').trim()
+  if (!agencyId) return err('An agency is required', 'VALIDATION', 400)
+
+  const agencyFilter: Record<string, unknown> = { _id: agencyId }
+  if (ctx.role === 'COMPANY_ADMIN') agencyFilter.companyId = ctx.companyId
+  const agency = await Agency.findOne(agencyFilter).select('_id companyId environmentId').lean()
+  if (!agency) return err('Invalid agency', 'VALIDATION', 400)
 
   const existing = await User.findOne({ email })
   if (existing) return err('User with this email already exists', 'CONFLICT', 409)
@@ -62,10 +90,11 @@ export async function POST(req: NextRequest) {
     username,
     email,
     passwordHash: await hashPassword(tempPassword),
-    name: body.name,
-    role: body.role ?? 'VIEWER',
-    companyId: ctx.companyId ?? null,
-    agencyId: ctx.agencyId,
+    name,
+    role,
+    companyId: ctx.companyId ?? agency.companyId ?? null,
+    agencyId,
+    environmentId: agency.environmentId ?? null,
     status: 'INVITED',
     mustResetPassword: true,
     createdBy: ctx.userId,

@@ -42,7 +42,7 @@ export function OnboardAgencyDialog({ open, onOpenChange }: OnboardAgencyDialogP
   const [location, setLocation] = useState('')
 
   const [agencies, setAgencies] = useState<Agency[]>([])
-  const [users, setUsers] = useState<Array<{ _id: string; name: string; email: string }>>([])
+  const [users, setUsers] = useState<Array<{ _id: string; name: string; email: string; role?: string }>>([])
   const [ownerId, setOwnerId] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -50,7 +50,7 @@ export function OnboardAgencyDialog({ open, onOpenChange }: OnboardAgencyDialogP
   useEffect(() => {
     if (!open) return
     networkService.listAgencies().then(setAgencies).catch(() => {})
-    api.get<{ data: Array<{ _id: string; name: string; email: string }> }>('/users')
+    api.get<{ data: Array<{ _id: string; name: string; email: string; role?: string }> }>('/users?ownerCandidates=true&limit=100')
       .then((r) => setUsers(r?.data ?? []))
       .catch(() => setUsers([]))
   }, [open])
@@ -143,11 +143,11 @@ export function OnboardAgencyDialog({ open, onOpenChange }: OnboardAgencyDialogP
                 <Label htmlFor="agencyOwner">Agency Owner</Label>
                 <Select value={ownerId} onValueChange={handleOwnerChange}>
                   <SelectTrigger id="agencyOwner">
-                    <SelectValue placeholder={users.length ? 'Select an owner' : 'No users yet — add users first'} />
+                    <SelectValue placeholder={users.length ? 'Select an owner' : 'No owner users found'} />
                   </SelectTrigger>
                   <SelectContent>
                     {users.map((u) => (
-                      <SelectItem key={u._id} value={u._id}>{u.name} ({u.email})</SelectItem>
+                      <SelectItem key={u._id} value={u._id}>{u.name} ({u.email}){u.role ? ` - ${u.role}` : ''}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

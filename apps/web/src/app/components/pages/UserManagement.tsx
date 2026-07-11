@@ -34,7 +34,7 @@ interface User {
   createdAt: string
 }
 
-const SYSTEM_ROLES = ['AGENCY_OWNER', 'RESOURCE_MANAGER', 'PROJECT_MANAGER', 'FINANCE_CONTROLLER', 'VIEWER', 'SUPER_ADMIN']
+const SYSTEM_ROLES = ['VIEWER', 'MEMBER', 'MANAGER']
 
 export function UserManagement() {
   const [items, setItems] = useState<User[]>([])
