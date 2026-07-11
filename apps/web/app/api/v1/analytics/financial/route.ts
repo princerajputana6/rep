@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import mongoose from 'mongoose'
 import connectDB from '@/lib/mongodb'
 import { Project } from '@/lib/models/Project'
 import { Allocation } from '@/lib/models/Allocation'
@@ -11,10 +12,13 @@ export async function GET(_req: NextRequest) {
   if (isNextResponse(ctx)) return ctx
   await connectDB()
   const agencyFilter = { agencyId: ctx.agencyId }
+  // Aggregates don't auto-cast: Project.agencyId is an ObjectId, so match on one.
+  const oid = mongoose.isValidObjectId(ctx.agencyId) ? new mongoose.Types.ObjectId(ctx.agencyId) : ctx.agencyId
+  const projectAggMatch = { agencyId: oid }
 
   const [budgetAgg, projects] = await Promise.all([
     Project.aggregate([
-      { $match: agencyFilter },
+      { $match: projectAggMatch },
       {
         $group: {
           _id: null,

@@ -26,8 +26,12 @@ export async function connectDB(): Promise<typeof mongoose> {
   if (cached.conn) return cached.conn
 
   if (!cached.promise) {
+    // Pin the database explicitly. The connection string often omits the db
+    // name (which would silently fall back to "test"); MONGODB_DB keeps the
+    // app, seeds and migrations all pointed at the same database.
     cached.promise = mongoose.connect(MONGODB_URI, {
       bufferCommands: false,
+      dbName: process.env.MONGODB_DB || 'rep',
     })
   }
 

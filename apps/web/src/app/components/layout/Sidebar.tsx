@@ -145,8 +145,8 @@ export const SIDEBAR_MENU_SECTIONS: MenuSection[] = [
       { id: 'staffing-planner' as Page, label: 'Staffing Planner', icon: Calendar },
       { id: 'enhanced-staffing' as Page, label: 'Enhanced Staffing', icon: Workflow },
       { id: 'capacity' as Page, label: 'Capacity', icon: TrendingUp },
-      { id: 'borrow-requests' as Page, label: 'Borrow Requests', icon: ArrowLeftRight, badge: 12 },
-      { id: 'resource-approvals' as Page, label: 'Approvals', icon: ClipboardCheck, badge: 3, badgeVariant: 'warning' },
+      { id: 'borrow-requests' as Page, label: 'Borrow Requests', icon: ArrowLeftRight },
+      { id: 'resource-approvals' as Page, label: 'Approvals', icon: ClipboardCheck, badgeVariant: 'warning' },
     ]
   },
   {
@@ -173,7 +173,7 @@ export const SIDEBAR_MENU_SECTIONS: MenuSection[] = [
     collapsible: true,
     items: [
       { id: 'financials' as Page, label: 'Financials', icon: DollarSign },
-      { id: 'budget-alerts' as Page, label: 'Budget Alerts', icon: AlertTriangle, badge: 3, badgeVariant: 'warning' },
+      { id: 'budget-alerts' as Page, label: 'Budget Alerts', icon: AlertTriangle, badgeVariant: 'warning' },
       { id: 'time-phased-kpi' as Page, label: 'KPI Reports', icon: BarChart3 },
       { id: 'kpi-details' as Page, label: 'KPI Details', icon: Target },
       { id: 'client-profitability' as Page, label: 'Client Profitability', icon: Target },
@@ -220,6 +220,37 @@ export function Sidebar({ currentPage, onPageChange, collapsed, onToggleCollapse
   const [expandedSections, setExpandedSections] = useState<string[]>(['main', 'operations', 'intelligence']);
   const [favorites, setFavorites] = useState<Page[]>([]);
   const [recentPages, setRecentPages] = useState<Page[]>([]);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+
+  // Live badge counts (real pending items). Hidden when zero.
+  useEffect(() => {
+    let active = true;
+    const count = async (p: string) => {
+      try {
+        const r = await fetch(`/api/v1/${p}`);
+        if (!r.ok) return 0;
+        const j = await r.json();
+        const d = j?.data;
+        return Array.isArray(d) ? d.length : Array.isArray(d?.data) ? d.data.length : 0;
+      } catch {
+        return 0;
+      }
+    };
+    Promise.all([
+      count('borrow-requests?status=PENDING'),
+      count('resource-approvals?status=PENDING'),
+      count('budget-alerts?status=TRIGGERED'),
+    ]).then(([borrow, approvals, budget]) => {
+      if (active) setCounts({ 'borrow-requests': borrow, 'resource-approvals': approvals, 'budget-alerts': budget });
+    });
+    return () => { active = false; };
+  }, []);
+
+  // Resolve an item's badge: a live count (hidden at 0) overrides, else the static label (e.g. 'NEW').
+  const badgeFor = (item: { id: Page; badge?: number | string }): number | string | undefined => {
+    if (item.id in counts) return counts[item.id] > 0 ? counts[item.id] : undefined;
+    return item.badge;
+  };
 
   // Load favorites and recent pages from localStorage
   useEffect(() => {
@@ -301,6 +332,7 @@ export function Sidebar({ currentPage, onPageChange, collapsed, onToggleCollapse
     const isActive = currentPage === item.id;
     const isFavorite = favorites.includes(item.id);
     const Icon = item.icon;
+    const badge = badgeFor(item);
 
     return (
       <button
@@ -319,12 +351,12 @@ export function Sidebar({ currentPage, onPageChange, collapsed, onToggleCollapse
             <span className={`text-sm flex-1 text-left ${isActive ? 'font-medium' : ''}`}>
               {item.label}
             </span>
-            {item.badge && (
-              <Badge 
+            {badge != null && badge !== '' && (
+              <Badge
                 variant={item.badgeVariant === 'warning' ? 'destructive' : 'default'}
                 className="text-xs px-1.5 h-5"
               >
-                {item.badge}
+                {badge}
               </Badge>
             )}
             {showFavorite && (

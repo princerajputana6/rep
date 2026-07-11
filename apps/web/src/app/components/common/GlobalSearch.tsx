@@ -98,7 +98,7 @@ export function GlobalSearch({ open, onOpenChange, onResultClick }: GlobalSearch
       template: <Badge className="bg-purple-500">Template</Badge>,
       client: <Badge className="bg-green-500">Client</Badge>,
       user: <Badge className="bg-amber-500">User</Badge>,
-      project: <Badge className="bg-accent0">Project</Badge>,
+      project: <Badge className="bg-primary">Project</Badge>,
     };
     return badges[type as keyof typeof badges];
   };

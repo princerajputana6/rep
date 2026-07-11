@@ -68,7 +68,7 @@ export function VersionHistory({
       case 'archived':
         return 'bg-amber-500';
       case 'restored':
-        return 'bg-accent0';
+        return 'bg-primary';
       default:
         return 'bg-gray-500';
     }

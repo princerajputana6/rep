@@ -25,7 +25,7 @@ import {
   PieChart, Pie, Legend,
 } from 'recharts';
 import { toast } from 'sonner';
-import { portfoliosApi } from '@/lib/api';
+import { portfoliosApi, programsApi } from '@/lib/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -163,18 +163,22 @@ function statusDot(s: Portfolio['status']) {
 // ─── Portfolio Card ────────────────────────────────────────────────────────────
 
 function PortfolioCard({
-  portfolio, expanded, onToggleExpand,
+  portfolio, expanded, onToggleExpand, programs, programsLoading, onCreateProgram, onManage,
 }: {
   portfolio: Portfolio;
   expanded: boolean;
   onToggleExpand: () => void;
+  programs: PortfolioProgram[];
+  programsLoading: boolean;
+  onCreateProgram: () => void;
+  onManage: () => void;
 }) {
   const burnPct = portfolio.totalBudget > 0 ? (portfolio.totalSpent / portfolio.totalBudget) * 100 : 0;
-  const avgHealth = portfolio.programs.length > 0
-    ? Math.round(portfolio.programs.reduce((s, p) => s + p.health, 0) / portfolio.programs.length)
+  const avgHealth = programs.length > 0
+    ? Math.round(programs.reduce((s, p) => s + p.health, 0) / programs.length)
     : 0;
   const hc = healthColor(avgHealth);
-  const totalProjects = portfolio.programs.reduce((s, p) => s + p.projectCount, 0);
+  const totalProjects = programs.reduce((s, p) => s + p.projectCount, 0);
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -204,7 +208,7 @@ function PortfolioCard({
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-2 mb-3">
           <div className="text-center p-2 bg-gray-50 rounded-lg">
-            <p className="text-sm font-bold text-gray-900">{portfolio.programs.length}</p>
+            <p className="text-sm font-bold text-gray-900">{programs.length}</p>
             <p className="text-[10px] text-gray-400">Programs</p>
           </div>
           <div className="text-center p-2 bg-gray-50 rounded-lg">
@@ -245,28 +249,52 @@ function PortfolioCard({
         {/* Expanded programs list */}
         {expanded && (
           <div className="mt-3 border-t pt-3 space-y-2">
-            {portfolio.programs.map(pg => {
-              const pgBurn = pg.budget > 0 ? (pg.spent / pg.budget) * 100 : 0;
-              const pgHc = healthColor(pg.health);
-              return (
-                <div key={pg.id} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 text-xs">
-                  <Layers className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-gray-800 truncate">{pg.name}</span>
-                      <span className={`ml-2 font-semibold ${pgHc.text}`}>{pg.health}</span>
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Progress value={Math.min(100, pgBurn)} className={`h-1 w-20 flex-shrink-0 ${pgHc.bar}`} />
-                      <span className="text-gray-500">{pg.projectCount} proj · {fmt(pg.budget)}</span>
-                      {pg.shareableHours > 0 && (
-                        <span className="text-amber-600 font-medium ml-auto">+{pg.shareableHours}h available</span>
-                      )}
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-semibold text-gray-700 flex items-center gap-1">
+                <Layers className="w-3.5 h-3.5 text-purple-500" /> Programs
+              </span>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={onManage}>
+                  <Target className="w-3 h-3" /> Manage
+                </Button>
+                <Button size="sm" className="h-7 text-xs gap-1" onClick={onCreateProgram}>
+                  <Plus className="w-3 h-3" /> New Program
+                </Button>
+              </div>
+            </div>
+
+            {programsLoading ? (
+              <p className="text-xs text-gray-400 py-4 text-center">Loading programs…</p>
+            ) : programs.length === 0 ? (
+              <div className="text-center py-6 text-gray-400">
+                <Layers className="w-6 h-6 mx-auto mb-1 opacity-30" />
+                <p className="text-xs font-medium">No programs yet</p>
+                <Button size="sm" variant="outline" className="mt-2 h-7 text-xs gap-1" onClick={onCreateProgram}>
+                  <Plus className="w-3 h-3" /> Create the first program
+                </Button>
+              </div>
+            ) : (
+              programs.map(pg => {
+                const pgBurn = pg.budget > 0 ? (pg.spent / pg.budget) * 100 : 0;
+                const pgHc = healthColor(pg.health);
+                return (
+                  <div key={pg.id} className="flex items-center gap-3 p-2 rounded-lg bg-gray-50 text-xs">
+                    <Layers className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-gray-800 truncate">{pg.name}</span>
+                        <span className={`ml-2 font-semibold ${pgHc.text}`}>{pg.health || '—'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Progress value={Math.min(100, pgBurn)} className={`h-1 w-20 flex-shrink-0 ${pgHc.bar}`} />
+                        <span className="text-gray-500">{pg.projectCount} proj · {fmt(pg.budget)}</span>
+                        <Badge variant="outline" className="ml-auto text-[9px] capitalize">{pg.status}</Badge>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         )}
       </CardContent>
@@ -376,7 +404,7 @@ export function Portfolio() {
     portfoliosApi.list().then(result => {
       const rows = result.data ?? []
       const mapped: Portfolio[] = rows.map(p => ({
-        id: p.id,
+        id: String((p as any)._id ?? p.id),
         name: p.name,
         description: p.description ?? '',
         owner: p.owner,
@@ -418,6 +446,34 @@ export function Portfolio() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [createOpen, setCreateOpen] = useState(false);
 
+  // Per-portfolio programs (fetched lazily when a portfolio is expanded).
+  const [programsByPortfolio, setProgramsByPortfolio] = useState<Record<string, PortfolioProgram[]>>({});
+  const [programsLoading, setProgramsLoading] = useState<Set<string>>(new Set());
+  const [programDialogFor, setProgramDialogFor] = useState<string | null>(null);
+  const [editPortfolio, setEditPortfolio] = useState<Portfolio | null>(null);
+
+  const loadPrograms = (portfolioId: string) => {
+    setProgramsLoading(prev => new Set(prev).add(portfolioId));
+    programsApi.list({ portfolioId }).then(res => {
+      const rows = (res.data ?? []).map((pg: any) => ({
+        id: String(pg._id ?? pg.id),
+        name: pg.name,
+        projectCount: Array.isArray(pg.projectIds) ? pg.projectIds.length : 0,
+        budget: pg.budget ?? 0,
+        spent: pg.spent ?? 0,
+        health: pg.healthScore ?? 0,
+        status: (pg.status?.toLowerCase() as PortfolioProgram['status']) ?? 'planning',
+        shareableHours: 0,
+        unlockableRevenue: 0,
+      }));
+      setProgramsByPortfolio(prev => ({ ...prev, [portfolioId]: rows }));
+    }).catch((e: Error) => {
+      toast.error(e.message ?? 'Failed to load programs');
+    }).finally(() => {
+      setProgramsLoading(prev => { const n = new Set(prev); n.delete(portfolioId); return n; });
+    });
+  };
+
   const filtered = useMemo(() => portfolios.filter(p => {
     if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (stratFilter !== 'all' && p.strategic !== stratFilter) return false;
@@ -438,7 +494,13 @@ export function Portfolio() {
   const toggleExpand = (id: string) => {
     setExpandedIds(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        // Fetch this portfolio's programs the first time it's opened.
+        if (!(id in programsByPortfolio)) loadPrograms(id);
+      }
       return next;
     });
   };
@@ -586,6 +648,10 @@ export function Portfolio() {
               key={p.id} portfolio={p}
               expanded={expandedIds.has(p.id)}
               onToggleExpand={() => toggleExpand(p.id)}
+              programs={programsByPortfolio[p.id] ?? []}
+              programsLoading={programsLoading.has(p.id)}
+              onCreateProgram={() => setProgramDialogFor(p.id)}
+              onManage={() => setEditPortfolio(p)}
             />
           ))}
         </div>
@@ -729,6 +795,193 @@ export function Portfolio() {
         open={createOpen} onClose={() => setCreateOpen(false)}
         onCreated={p => setPortfolios(prev => [p, ...prev])}
       />
+
+      <CreateProgramDialog
+        portfolioId={programDialogFor}
+        onClose={() => setProgramDialogFor(null)}
+        onCreated={pid => loadPrograms(pid)}
+      />
+
+      <EditPortfolioDialog
+        portfolio={editPortfolio}
+        onClose={() => setEditPortfolio(null)}
+        onSaved={() => load()}
+      />
     </div>
+  );
+}
+
+// ─── Create Program Dialog ─────────────────────────────────────────────────────
+
+function CreateProgramDialog({ portfolioId, onClose, onCreated }: {
+  portfolioId: string | null;
+  onClose: () => void;
+  onCreated: (portfolioId: string) => void;
+}) {
+  const [form, setForm] = useState({ name: '', owner: '', budget: '', status: 'ACTIVE', description: '' });
+  const [saving, setSaving] = useState(false);
+  const set = (k: string, v: string) => setForm(prev => ({ ...prev, [k]: v }));
+
+  useEffect(() => {
+    if (portfolioId) setForm({ name: '', owner: '', budget: '', status: 'ACTIVE', description: '' });
+  }, [portfolioId]);
+
+  const handleCreate = () => {
+    if (!portfolioId) return;
+    if (!form.name.trim()) { toast.error('Program name is required'); return; }
+    setSaving(true);
+    programsApi.create({
+      portfolioId,
+      name: form.name.trim(),
+      owner: form.owner.trim() || 'Unassigned',
+      budget: Number(form.budget) || 0,
+      status: form.status,
+      description: form.description.trim() || undefined,
+    } as any).then(() => {
+      toast.success(`Program "${form.name}" created.`);
+      onCreated(portfolioId);
+      onClose();
+    }).catch((e: Error) => {
+      toast.error(e.message ?? 'Failed to create program');
+    }).finally(() => setSaving(false));
+  };
+
+  return (
+    <Dialog open={!!portfolioId} onOpenChange={o => { if (!o) onClose(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>New Program</DialogTitle>
+          <DialogDescription>Add a program under this portfolio.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label htmlFor="pgName">Program Name *</Label>
+            <Input id="pgName" placeholder="e.g., Cloud Migration" value={form.name} onChange={e => set('name', e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="pgOwner">Owner</Label>
+              <Input id="pgOwner" placeholder="e.g., Alex Chen" value={form.owner} onChange={e => set('owner', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pgBudget">Budget ($)</Label>
+              <Input id="pgBudget" type="number" placeholder="0" value={form.budget} onChange={e => set('budget', e.target.value)} />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <Select value={form.status} onValueChange={v => set('status', v)}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="PLANNING">Planning</SelectItem>
+                <SelectItem value="CLOSED">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button onClick={handleCreate} disabled={saving || !form.name.trim()}>
+            {saving ? 'Creating…' : 'Create Program'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Edit / Manage Portfolio Dialog ────────────────────────────────────────────
+
+function EditPortfolioDialog({ portfolio, onClose, onSaved }: {
+  portfolio: Portfolio | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState({ name: '', description: '', owner: '', strategic: 'Growth', status: 'active', budget: '' });
+  const [saving, setSaving] = useState(false);
+  const set = (k: string, v: string) => setForm(prev => ({ ...prev, [k]: v }));
+
+  useEffect(() => {
+    if (portfolio) setForm({
+      name: portfolio.name, description: portfolio.description, owner: portfolio.owner,
+      strategic: portfolio.strategic, status: portfolio.status, budget: String(portfolio.totalBudget || ''),
+    });
+  }, [portfolio]);
+
+  const handleSave = () => {
+    if (!portfolio) return;
+    setSaving(true);
+    portfoliosApi.update(portfolio.id, {
+      name: form.name.trim(),
+      description: form.description.trim(),
+      owner: form.owner.trim(),
+      strategicTheme: form.strategic,
+      status: form.status,
+      budget: Number(form.budget) || 0,
+    } as any).then(() => {
+      toast.success('Portfolio updated.');
+      onSaved();
+      onClose();
+    }).catch((e: Error) => {
+      toast.error(e.message ?? 'Failed to update portfolio');
+    }).finally(() => setSaving(false));
+  };
+
+  return (
+    <Dialog open={!!portfolio} onOpenChange={o => { if (!o) onClose(); }}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Manage Portfolio</DialogTitle>
+          <DialogDescription>Update portfolio details.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label htmlFor="epName">Name</Label>
+            <Input id="epName" value={form.name} onChange={e => set('name', e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="epDesc">Description</Label>
+            <Input id="epDesc" value={form.description} onChange={e => set('description', e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="epOwner">Owner</Label>
+              <Input id="epOwner" value={form.owner} onChange={e => set('owner', e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="epBudget">Budget ($)</Label>
+              <Input id="epBudget" type="number" value={form.budget} onChange={e => set('budget', e.target.value)} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Strategic Theme</Label>
+              <Select value={form.strategic} onValueChange={v => set('strategic', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {['Growth', 'Efficiency', 'Innovation', 'Compliance'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Status</Label>
+              <Select value={form.status} onValueChange={v => set('status', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {['active', 'planning', 'closed'].map(s => <SelectItem key={s} value={s} className="capitalize">{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button onClick={handleSave} disabled={saving || !form.name.trim()}>
+            {saving ? 'Saving…' : 'Save Changes'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

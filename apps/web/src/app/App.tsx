@@ -34,7 +34,7 @@ const IndustryStandardHiddenCapacity = lazy(async () => ({ default: (await impor
 const AuditLogs = lazy(async () => ({ default: (await import('@/app/components/pages/AuditLogs')).AuditLogs }));
 const Integrations = lazy(async () => ({ default: (await import('@/app/components/pages/Integrations')).Integrations }));
 const ResourceApprovals = lazy(async () => ({ default: (await import('@/app/components/pages/ResourceApprovals')).ResourceApprovals }));
-const Settings = lazy(async () => ({ default: (await import('@/app/components/pages/Settings')).Settings }));
+const Settings = lazy(async () => ({ default: (await import('@/app/components/pages/EnhancedSettings')).EnhancedSettings }));
 const AIResourceMatching = lazy(async () => ({ default: (await import('@/app/components/pages/AIResourceMatching')).AIResourceMatching }));
 const PredictivePlanning = lazy(async () => ({ default: (await import('@/app/components/pages/PredictivePlanning')).PredictivePlanning }));
 const RealTimeNotifications = lazy(async () => ({ default: (await import('@/app/components/pages/RealTimeNotifications')).RealTimeNotifications }));

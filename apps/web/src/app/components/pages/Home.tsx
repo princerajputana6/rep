@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ComponentType } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/app/components/ui/card';
 import { Button } from '@/app/components/ui/button';
 import { Badge } from '@/app/components/ui/badge';
@@ -71,26 +71,113 @@ const defaultWidgets: Widget[] = [
   { id: 'w6', type: 'chart', title: 'Utilization Trends', size: 'medium', position: 5 },
 ];
 
+interface HomeData {
+  kpis: {
+    totalResources: number;
+    activeAgencies: number;
+    avgUtilization: number;
+    pendingApprovals: number;
+  };
+  projects: Array<{ _id: string; name: string; status?: string; healthScore?: number; budgetBurnPct?: number }>;
+  approvals: Array<{ _id: string; resourceName?: string; projectName?: string; requestedRole?: string; status?: string }>;
+  borrowRequests: Array<{ _id: string; resourceName?: string; requestingTeam?: string; status?: string }>;
+}
+
+const EMPTY_DATA: HomeData = {
+  kpis: { totalResources: 0, activeAgencies: 0, avgUtilization: 0, pendingApprovals: 0 },
+  projects: [],
+  approvals: [],
+  borrowRequests: [],
+};
+
+function WidgetEmpty({
+  icon: Icon, label, hint, action, onAction,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  label: string;
+  hint?: string;
+  action?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center py-10 text-center">
+      <Icon className="w-8 h-8 text-muted-foreground/40" />
+      <p className="mt-3 text-sm font-medium text-muted-foreground">{label}</p>
+      {hint && <p className="mt-1 text-xs text-muted-foreground/70 max-w-xs">{hint}</p>}
+      {action && onAction && (
+        <Button size="sm" variant="outline" className="mt-3" onClick={onAction}>{action}</Button>
+      )}
+    </div>
+  );
+}
+
 export function Home({ onPageChange }: HomeProps) {
   const [widgets, setWidgets] = useState<Widget[]>([]);
   const [draggedWidget, setDraggedWidget] = useState<string | null>(null);
+  const [data, setData] = useState<HomeData>(EMPTY_DATA);
+
+  // Real data for the home widgets. Everything falls back to empty so a brand-new
+  // company shows genuine zeros / empty states instead of sample content.
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      const safe = async <T,>(p: string, fallback: T): Promise<T> => {
+        try {
+          const res = await fetch(`/api/v1/${p}`);
+          if (!res.ok) return fallback;
+          const json = await res.json();
+          return (json?.data ?? fallback) as T;
+        } catch {
+          return fallback;
+        }
+      };
+      const [analytics, agencies, approvals, borrow] = await Promise.all([
+        safe<{ kpis?: Record<string, number>; recentProjects?: HomeData['projects'] }>('analytics', {}),
+        safe<unknown[]>('agencies', []),
+        safe<HomeData['approvals']>('resource-approvals?status=PENDING', []),
+        safe<HomeData['borrowRequests']>('borrow-requests?status=PENDING', []),
+      ]);
+      if (!active) return;
+      const k = analytics.kpis ?? {};
+      setData({
+        kpis: {
+          totalResources: k.totalResources ?? 0,
+          activeAgencies: Array.isArray(agencies) ? agencies.length : 0,
+          avgUtilization: k.avgUtilization ?? 0,
+          pendingApprovals: (Array.isArray(approvals) ? approvals.length : 0) || (k.pendingApprovals ?? 0),
+        },
+        projects: analytics.recentProjects ?? [],
+        approvals: Array.isArray(approvals) ? approvals : [],
+        borrowRequests: Array.isArray(borrow) ? borrow : [],
+      });
+    }
+    load();
+    return () => { active = false; };
+  }, []);
+
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
+    let initial = defaultWidgets;
     const saved = localStorage.getItem('rep_home_widgets');
     if (saved) {
       try {
-        setWidgets(JSON.parse(saved));
-      } catch (e) {
-        setWidgets(defaultWidgets);
+        const parsed = JSON.parse(saved);
+        // Only honour a non-empty saved layout; an empty array falls back to defaults.
+        if (Array.isArray(parsed) && parsed.length) initial = parsed;
+      } catch {
+        /* keep defaults */
       }
-    } else {
-      setWidgets(defaultWidgets);
     }
+    setWidgets(initial);
+    setHydrated(true);
   }, []);
 
+  // Persist only after hydration so the initial empty state can't clobber the saved layout.
   useEffect(() => {
+    if (!hydrated) return;
     localStorage.setItem('rep_home_widgets', JSON.stringify(widgets));
-  }, [widgets]);
+  }, [widgets, hydrated]);
 
   const handleAddWidget = (type: Widget['type']) => {
     const newWidget: Widget = {
@@ -175,12 +262,12 @@ export function Home({ onPageChange }: HomeProps) {
     blue: 'bg-blue-500 hover:bg-blue-600',
     amber: 'bg-amber-500 hover:bg-amber-600',
     purple: 'bg-purple-500 hover:bg-purple-600',
-    indigo: 'bg-accent0 hover:bg-primary',
+    indigo: 'bg-primary hover:bg-primary',
     green: 'bg-green-500 hover:bg-green-600',
     emerald: 'bg-emerald-500 hover:bg-emerald-600',
     cyan: 'bg-cyan-500 hover:bg-cyan-600',
     teal: 'bg-teal-500 hover:bg-teal-600',
-    violet: 'bg-accent0 hover:bg-primary',
+    violet: 'bg-primary hover:bg-primary',
     pink: 'bg-pink-500 hover:bg-pink-600',
     orange: 'bg-orange-500 hover:bg-orange-600',
     gray: 'bg-gray-500 hover:bg-gray-600',
@@ -199,23 +286,20 @@ export function Home({ onPageChange }: HomeProps) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="p-4 bg-blue-50 rounded-lg">
               <div className="text-sm text-blue-600 font-medium">Total Resources</div>
-              <div className="text-2xl font-semibold text-blue-900 mt-2">1,247</div>
-              <div className="text-xs text-blue-600 mt-1">↑ 12% from last month</div>
+              <div className="text-2xl font-semibold text-blue-900 mt-2">{data.kpis.totalResources.toLocaleString()}</div>
             </div>
             <div className="p-4 bg-green-50 rounded-lg">
               <div className="text-sm text-green-600 font-medium">Active Agencies</div>
-              <div className="text-2xl font-semibold text-green-900 mt-2">23</div>
-              <div className="text-xs text-green-600 mt-1">↑ 3 new this month</div>
+              <div className="text-2xl font-semibold text-green-900 mt-2">{data.kpis.activeAgencies}</div>
             </div>
             <div className="p-4 bg-purple-50 rounded-lg">
               <div className="text-sm text-purple-600 font-medium">Utilization</div>
-              <div className="text-2xl font-semibold text-purple-900 mt-2">78.5%</div>
-              <div className="text-xs text-purple-600 mt-1">↑ 5.2% increase</div>
+              <div className="text-2xl font-semibold text-purple-900 mt-2">{data.kpis.avgUtilization}%</div>
             </div>
             <div className="p-4 bg-amber-50 rounded-lg">
               <div className="text-sm text-amber-600 font-medium">Pending Approvals</div>
-              <div className="text-2xl font-semibold text-amber-900 mt-2">3</div>
-              <div className="text-xs text-amber-600 mt-1">Require action</div>
+              <div className="text-2xl font-semibold text-amber-900 mt-2">{data.kpis.pendingApprovals}</div>
+              {data.kpis.pendingApprovals > 0 && <div className="text-xs text-amber-600 mt-1">Require action</div>}
             </div>
           </div>
         );
@@ -290,7 +374,7 @@ export function Home({ onPageChange }: HomeProps) {
             >
               <ArrowLeftRight className="w-6 h-6 text-primary" />
               <span className="text-sm font-medium">Borrow Requests</span>
-              <Badge className="bg-accent0">12</Badge>
+              <Badge className="bg-primary">12</Badge>
             </Button>
             <Button
               variant="outline"
@@ -399,22 +483,20 @@ export function Home({ onPageChange }: HomeProps) {
         );
 
       case 'projects':
+        if (data.projects.length === 0) return <WidgetEmpty icon={FolderKanban} label="No active projects yet" action="Create a project" onAction={() => onPageChange('projects')} />;
         return (
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border-l-4 border-purple-500">
-              <div>
-                <p className="font-medium text-gray-900">Digital Transformation</p>
-                <p className="text-xs text-gray-600 mt-1">85% complete • Due in 12 days</p>
+            {data.projects.slice(0, 4).map((p) => (
+              <div key={p._id} className="flex items-center justify-between p-3 bg-muted rounded-lg border-l-4 border-primary">
+                <div>
+                  <p className="font-medium text-gray-900">{p.name}</p>
+                  {typeof p.budgetBurnPct === 'number' && (
+                    <p className="text-xs text-gray-600 mt-1">{p.budgetBurnPct}% budget burn</p>
+                  )}
+                </div>
+                <Badge className="bg-green-500">{(p.status ?? 'ACTIVE').replace('_', ' ')}</Badge>
               </div>
-              <Badge className="bg-green-500">On Track</Badge>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
-              <div>
-                <p className="font-medium text-gray-900">Mobile App Redesign</p>
-                <p className="text-xs text-gray-600 mt-1">60% complete • Due in 25 days</p>
-              </div>
-              <Badge className="bg-blue-500">Active</Badge>
-            </div>
+            ))}
             <Button variant="outline" className="w-full" size="sm" onClick={() => onPageChange('projects')}>
               View All Projects
             </Button>
@@ -422,93 +504,47 @@ export function Home({ onPageChange }: HomeProps) {
         );
 
       case 'approvals':
+        if (data.approvals.length === 0) return <WidgetEmpty icon={ClipboardCheck} label="No pending approvals" />;
         return (
           <div className="space-y-3">
-            <div className="p-3 bg-amber-50 rounded-lg border-l-4 border-amber-500">
-              <div className="flex items-center justify-between mb-2">
-                <p className="font-medium text-gray-900">Sarah Mitchell</p>
-                <Badge className="bg-amber-500">Pending</Badge>
+            {data.approvals.slice(0, 4).map((a) => (
+              <div key={a._id} className="p-3 bg-amber-50 rounded-lg border-l-4 border-amber-500">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="font-medium text-gray-900">{a.resourceName ?? 'Resource'}</p>
+                  <Badge className="bg-amber-500">{a.status ?? 'Pending'}</Badge>
+                </div>
+                <p className="text-xs text-gray-600">{[a.projectName, a.requestedRole].filter(Boolean).join(' • ')}</p>
               </div>
-              <p className="text-xs text-gray-600">Digital Transformation • Senior Developer</p>
-              <div className="flex gap-2 mt-3">
-                <Button size="sm" className="flex-1">Approve</Button>
-                <Button size="sm" variant="outline" className="flex-1">Reject</Button>
-              </div>
-            </div>
-            <div className="p-3 bg-amber-50 rounded-lg border-l-4 border-amber-500">
-              <div className="flex items-center justify-between mb-2">
-                <p className="font-medium text-gray-900">Michael Chen</p>
-                <Badge className="bg-amber-500">Pending</Badge>
-              </div>
-              <p className="text-xs text-gray-600">Cloud Migration • DevOps Engineer</p>
-              <div className="flex gap-2 mt-3">
-                <Button size="sm" className="flex-1">Approve</Button>
-                <Button size="sm" variant="outline" className="flex-1">Reject</Button>
-              </div>
-            </div>
+            ))}
             <Button variant="outline" className="w-full" size="sm" onClick={() => onPageChange('resource-approvals')}>
-              View All Approvals (3)
+              View All Approvals ({data.approvals.length})
             </Button>
           </div>
         );
 
       case 'borrow-requests':
+        if (data.borrowRequests.length === 0) return <WidgetEmpty icon={ArrowLeftRight} label="No borrow requests" />;
         return (
           <div className="space-y-3">
-            <div className="p-3 bg-accent rounded-lg">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <p className="font-medium text-gray-900">TechVentures</p>
-                  <p className="text-xs text-gray-600">Requesting Data Engineer • 3 months</p>
+            {data.borrowRequests.slice(0, 4).map((b) => (
+              <div key={b._id} className="p-3 bg-accent rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-gray-900">{b.resourceName ?? b.requestingTeam ?? 'Request'}</p>
+                    {b.requestingTeam && <p className="text-xs text-gray-600">{b.requestingTeam}</p>}
+                  </div>
+                  <Badge className="bg-primary">{b.status ?? 'Pending'}</Badge>
                 </div>
-                <Badge className="bg-accent0">New</Badge>
               </div>
-              <div className="flex gap-2 mt-2">
-                <Button size="sm" variant="outline" className="flex-1">Review</Button>
-              </div>
-            </div>
-            <div className="p-3 bg-green-50 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-gray-900">Digital Wave</p>
-                  <p className="text-xs text-gray-600">Borrowed Frontend Dev • Active</p>
-                </div>
-                <Badge className="bg-green-500">Approved</Badge>
-              </div>
-            </div>
+            ))}
             <Button variant="outline" className="w-full" size="sm" onClick={() => onPageChange('borrow-requests')}>
-              View All Requests (12)
+              View All Requests ({data.borrowRequests.length})
             </Button>
           </div>
         );
 
       case 'ai-matching':
-        return (
-          <div className="space-y-3">
-            <div className="p-3 bg-purple-50 rounded-lg border-l-4 border-purple-500">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Brain className="w-5 h-5 text-purple-600" />
-                  <span className="font-medium text-gray-900">Project Alpha</span>
-                </div>
-                <Badge className="bg-purple-500">95% Match</Badge>
-              </div>
-              <p className="text-xs text-gray-600 mb-2">3 candidates found with high confidence</p>
-              <Button size="sm" className="w-full">View Matches</Button>
-            </div>
-            <div className="p-3 bg-blue-50 rounded-lg border-l-4 border-blue-500">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <Brain className="w-5 h-5 text-blue-600" />
-                  <span className="font-medium text-gray-900">Cloud Migration</span>
-                </div>
-                <Badge className="bg-blue-500">88% Match</Badge>
-              </div>
-              <p className="text-xs text-gray-600 mb-2">2 candidates available now</p>
-              <Button size="sm" variant="outline" className="w-full">View Matches</Button>
-            </div>
-          </div>
-        );
+        return <WidgetEmpty icon={Brain} label="No AI match suggestions yet" hint="Suggestions appear as you add projects and resources" />;
 
       case 'staffing':
         return (

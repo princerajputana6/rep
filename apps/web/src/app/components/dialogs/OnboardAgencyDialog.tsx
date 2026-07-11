@@ -42,19 +42,32 @@ export function OnboardAgencyDialog({ open, onOpenChange }: OnboardAgencyDialogP
   const [location, setLocation] = useState('')
 
   const [agencies, setAgencies] = useState<Agency[]>([])
+  const [users, setUsers] = useState<Array<{ _id: string; name: string; email: string }>>([])
+  const [ownerId, setOwnerId] = useState('')
   const [saving, setSaving] = useState(false)
 
-  // Load existing agencies for the "Link to Main Agency" dropdown
+  // Load existing agencies (for the parent dropdown) and company users (for the owner dropdown)
   useEffect(() => {
     if (!open) return
     networkService.listAgencies().then(setAgencies).catch(() => {})
+    api.get<{ data: Array<{ _id: string; name: string; email: string }> }>('/users')
+      .then((r) => setUsers(r?.data ?? []))
+      .catch(() => setUsers([]))
   }, [open])
 
   const reset = () => {
-    setName(''); setOwner(''); setOwnerEmail(''); setDescription('')
+    setName(''); setOwner(''); setOwnerEmail(''); setOwnerId(''); setDescription('')
     setTotalResources(''); setParticipationLevel('full')
     setSelectedAgencyType(''); setNewAgencyType(''); setShowAddAgencyType(false)
     setIsSubAgency(false); setLinkedMainAgency(''); setLocation('')
+  }
+
+  // When an owner is picked from the dropdown, carry their name + email through.
+  const handleOwnerChange = (id: string) => {
+    setOwnerId(id)
+    const u = users.find((x) => x._id === id)
+    setOwner(u?.name ?? '')
+    setOwnerEmail(u?.email ?? '')
   }
 
   const handleAgencyTypeChange = (value: string) => {
@@ -70,8 +83,8 @@ export function OnboardAgencyDialog({ open, onOpenChange }: OnboardAgencyDialogP
   }
 
   const handleSubmit = async () => {
-    if (!name.trim() || !owner.trim() || !ownerEmail.trim()) {
-      toast.error('Name, owner, and email are required'); return
+    if (!name.trim()) {
+      toast.error('Agency name is required'); return
     }
     if (isSubAgency && !linkedMainAgency) {
       toast.error('Select a parent agency for the sub-agency'); return
@@ -127,16 +140,21 @@ export function OnboardAgencyDialog({ open, onOpenChange }: OnboardAgencyDialogP
                 <Input id="agencyName" placeholder="e.g., Acme Digital" value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="agencyOwner">Agency Owner *</Label>
-                <Input id="agencyOwner" placeholder="e.g., John Smith" value={owner} onChange={(e) => setOwner(e.target.value)} />
+                <Label htmlFor="agencyOwner">Agency Owner</Label>
+                <Select value={ownerId} onValueChange={handleOwnerChange}>
+                  <SelectTrigger id="agencyOwner">
+                    <SelectValue placeholder={users.length ? 'Select an owner' : 'No users yet — add users first'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {users.map((u) => (
+                      <SelectItem key={u._id} value={u._id}>{u.name} ({u.email})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="ownerEmail">Owner Email *</Label>
-                <Input id="ownerEmail" type="email" placeholder="owner@agency.com" value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} />
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="totalResources">Total Resource Count</Label>
                 <Input id="totalResources" type="number" placeholder="0" value={totalResources} onChange={(e) => setTotalResources(e.target.value)} />

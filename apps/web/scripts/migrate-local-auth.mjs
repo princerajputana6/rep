@@ -26,7 +26,7 @@ if (!process.env.MONGODB_URI) { console.error('❌ MONGODB_URI not set'); proces
 const ROLE_MAP = { AGENCY_OWNER: 'COMPANY_ADMIN', RESOURCE_MANAGER: 'MANAGER', ADMIN: 'COMPANY_ADMIN' }
 
 async function main() {
-  await mongoose.connect(process.env.MONGODB_URI)
+  await mongoose.connect(process.env.MONGODB_URI, { dbName: process.env.MONGODB_DB || "rep" })
   const db = mongoose.connection.db
   const users = db.collection('users')
   const collections = (await db.listCollections().toArray()).map((c) => c.name)

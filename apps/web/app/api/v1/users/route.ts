@@ -13,7 +13,16 @@ export async function GET(req: NextRequest) {
   const page = parseInt(searchParams.get('page') ?? '1')
   const limit = parseInt(searchParams.get('limit') ?? '25')
 
-  const filter: Record<string, unknown> = { agencyId: ctx.agencyId }
+  // Scope: super admin sees all; a company admin sees everyone in their company
+  // (including themselves); a regular member sees only their own agency.
+  const filter: Record<string, unknown> = {}
+  if (ctx.role === 'SUPER_ADMIN') {
+    /* all */
+  } else if (ctx.role === 'COMPANY_ADMIN' && ctx.companyId) {
+    filter.companyId = ctx.companyId
+  } else {
+    filter.agencyId = ctx.agencyId
+  }
   const search = searchParams.get('search')
   if (search) filter.$or = [
     { name: { $regex: search, $options: 'i' } },
@@ -22,7 +31,7 @@ export async function GET(req: NextRequest) {
 
   const skip = (page - 1) * limit
   const [data, total] = await Promise.all([
-    User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    User.find(filter).select('-passwordHash').sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
     User.countDocuments(filter),
   ])
 

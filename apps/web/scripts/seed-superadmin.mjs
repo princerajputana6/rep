@@ -30,7 +30,7 @@ if (!process.env.MONGODB_URI) {
 const USERNAME = (process.env.SUPERADMIN_USERNAME || 'superadmin').toLowerCase()
 const PASSWORD = process.env.SUPERADMIN_PASSWORD || 'ChangeMe!2026'
 const EMAIL = (process.env.SUPERADMIN_EMAIL || 'superadmin@rep.local').toLowerCase()
-const DB_NAME = process.env.SUPERADMIN_DB || process.argv.find((arg) => arg.startsWith('--db='))?.slice(5)
+const DB_NAME = process.env.SUPERADMIN_DB || process.argv.find((arg) => arg.startsWith('--db='))?.slice(5) || process.env.MONGODB_DB || 'rep'
 
 async function main() {
   await mongoose.connect(process.env.MONGODB_URI, DB_NAME ? { dbName: DB_NAME } : undefined)

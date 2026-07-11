@@ -165,7 +165,7 @@ export default function LandingPage() {
           </Link>
           <Link
             href="/sign-up"
-            className="text-sm bg-primary hover:bg-accent0 transition-all px-5 py-2 rounded-full font-medium shadow-lg shadow-primary/20"
+            className="text-sm bg-primary hover:bg-primary transition-all px-5 py-2 rounded-full font-medium shadow-lg shadow-primary/20"
           >
             Get Started
           </Link>
@@ -189,7 +189,7 @@ export default function LandingPage() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-blue-600/5 rounded-full blur-3xl" />
 
         <div className="relative z-10 max-w-5xl mx-auto">
-          <div className="inline-flex items-center gap-2 bg-accent0/10 border border-primary/20 rounded-full px-4 py-2 text-sm text-primary/40 mb-8 animate-fade-in">
+          <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-2 text-sm text-primary/40 mb-8 animate-fade-in">
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
             Now with AI Co-Pilot & Predictive Planning
           </div>
@@ -209,7 +209,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/sign-up"
-              className="group flex items-center gap-2 bg-primary hover:bg-accent0 transition-all px-8 py-4 rounded-full font-semibold text-lg shadow-2xl shadow-primary/30 hover:shadow-primary/50 hover:-translate-y-0.5"
+              className="group flex items-center gap-2 bg-primary hover:bg-primary transition-all px-8 py-4 rounded-full font-semibold text-lg shadow-2xl shadow-primary/30 hover:shadow-primary/50 hover:-translate-y-0.5"
             >
               Start Free
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -288,7 +288,7 @@ export default function LandingPage() {
             const suffix = stat.value.replace(/\d+/, '')
             return (
               <div key={stat.label} className="text-center group">
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-accent0/10 border border-primary/20 mb-4 group-hover:scale-110 transition-transform">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 mb-4 group-hover:scale-110 transition-transform">
                   <Icon className="w-5 h-5 text-primary" />
                 </div>
                 <div className="text-4xl font-extrabold text-white mb-1">
@@ -377,7 +377,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/sign-up"
-              className="group flex items-center justify-center gap-2 bg-primary hover:bg-accent0 transition-all px-10 py-4 rounded-full font-semibold text-lg shadow-2xl shadow-primary/30 hover:-translate-y-0.5"
+              className="group flex items-center justify-center gap-2 bg-primary hover:bg-primary transition-all px-10 py-4 rounded-full font-semibold text-lg shadow-2xl shadow-primary/30 hover:-translate-y-0.5"
             >
               Create Free Account
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />

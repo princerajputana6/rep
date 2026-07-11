@@ -35,7 +35,7 @@ const ALL_MODULES = [
 ]
 
 async function main() {
-  await mongoose.connect(process.env.MONGODB_URI)
+  await mongoose.connect(process.env.MONGODB_URI, { dbName: process.env.MONGODB_DB || "rep" })
   const db = mongoose.connection.db
   const Companies = db.collection('companies')
   const Licenses = db.collection('licenses')
