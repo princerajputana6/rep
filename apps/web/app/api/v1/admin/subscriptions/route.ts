@@ -1,55 +1,56 @@
 import { NextRequest } from 'next/server'
 import connectDB from '@/lib/mongodb'
-import { Subscription } from '@/lib/models/Subscription'
-import { Agency } from '@/lib/models/Agency'
+import { Company } from '@/lib/models/Company'
+import { License } from '@/lib/models/License'
 import { ok, err, requireAuth, isNextResponse } from '@/lib/api-helpers'
-import { PLAN_DEFAULTS, ModuleKey } from '@/lib/modules'
+import { PLAN_DEFAULTS, PLAN_TIERS, SANDBOX_ALLOWANCE, ModuleKey, PlanTier } from '@/lib/modules'
 
-// SUPER_ADMIN only. Returns every agency joined with its subscription.
+// SUPER_ADMIN only. Compatibility route for the Super Admin UI; it now manages
+// company licenses rather than legacy agency subscriptions.
 export async function GET(_req: NextRequest) {
   const ctx = await requireAuth()
   if (isNextResponse(ctx)) return ctx
   if (ctx.role !== 'SUPER_ADMIN') return err('Forbidden', 'FORBIDDEN', 403)
   await connectDB()
-  const subs = await Subscription.find({}).lean()
-  return ok(subs)
+  const licenses = await License.find({}).lean()
+  return ok(licenses)
 }
 
-// Create a fresh subscription for an agency (or upsert one).
+// Create a fresh license for a company (or upsert one).
 export async function POST(req: NextRequest) {
   const ctx = await requireAuth()
   if (isNextResponse(ctx)) return ctx
   if (ctx.role !== 'SUPER_ADMIN') return err('Forbidden', 'FORBIDDEN', 403)
   await connectDB()
   const body = await req.json()
-  if (!body.agencyId) return err('agencyId required', 'VALIDATION', 400)
+  if (!body.companyId) return err('companyId required', 'VALIDATION', 400)
 
-  const plan = body.plan && PLAN_DEFAULTS[body.plan as string] ? body.plan : 'FREE'
+  const tier: PlanTier = PLAN_TIERS.includes(body.tier) ? body.tier : 'PRIME'
   const enabledModules: ModuleKey[] = Array.isArray(body.enabledModules)
     ? body.enabledModules
-    : PLAN_DEFAULTS[plan]
+    : PLAN_DEFAULTS[tier]
 
-  // Refuse to create a subscription for an agency that doesn't exist.
-  const agency = await Agency.findById(body.agencyId).lean()
-  if (!agency) return err('Agency not found', 'NOT_FOUND', 404)
+  const company = await Company.findById(body.companyId).lean()
+  if (!company) return err('Company not found', 'NOT_FOUND', 404)
 
-  const sub = await Subscription.findOneAndUpdate(
-    { agencyId: body.agencyId },
+  const license = await License.findOneAndUpdate(
+    { companyId: body.companyId },
     {
       $set: {
-        plan,
+        tier,
         status: body.status ?? 'TRIAL',
         enabledModules,
         maxUsers: body.maxUsers ?? null,
-        maxProjects: body.maxProjects ?? null,
-        trialEndsAt: body.trialEndsAt ? new Date(body.trialEndsAt) : null,
-        currentPeriodEnd: body.currentPeriodEnd ? new Date(body.currentPeriodEnd) : null,
+        maxAgencies: body.maxAgencies ?? null,
+        sandboxLimit: body.sandboxLimit ?? SANDBOX_ALLOWANCE[tier],
+        seats: body.seats ?? null,
+        validTo: body.validTo ? new Date(body.validTo) : null,
         notes: body.notes ?? '',
-        updatedBy: ctx.userId,
+        issuedBy: ctx.userId,
       },
-      $setOnInsert: { agencyId: body.agencyId },
+      $setOnInsert: { companyId: body.companyId },
     },
     { upsert: true, new: true }
   ).lean()
-  return ok(sub, 201)
+  return ok(license, 201)
 }

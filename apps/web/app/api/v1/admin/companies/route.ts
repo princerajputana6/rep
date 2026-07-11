@@ -34,12 +34,14 @@ export async function GET() {
   await connectDB()
 
   const companies = await Company.find({}).sort({ createdAt: -1 }).lean()
-  const [licenses, admins] = await Promise.all([
+  const [licenses, admins, userCounts] = await Promise.all([
     License.find({}).lean(),
     User.find({ role: 'COMPANY_ADMIN' }).select('-passwordHash').lean(),
+    User.aggregate([{ $group: { _id: '$companyId', count: { $sum: 1 } } }]),
   ])
   const licByCompany = new Map(licenses.map((l) => [String(l.companyId), l]))
   const adminByCompany = new Map(admins.map((a) => [String(a.companyId), a]))
+  const userCountByCompany = new Map(userCounts.map((u) => [String(u._id), u.count]))
 
   return NextResponse.json({
     success: true,
@@ -47,6 +49,7 @@ export async function GET() {
       ...c,
       license: licByCompany.get(String(c._id)) ?? null,
       admin: adminByCompany.get(String(c._id)) ?? null,
+      userCount: userCountByCompany.get(String(c._id)) ?? 0,
     })),
   })
 }

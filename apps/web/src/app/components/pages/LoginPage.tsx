@@ -3,14 +3,14 @@ import { useAuth } from '@/app/context/AuthContext'
 
 export function LoginPage() {
   const { login, isLoading, error, clearError } = useAuth()
-  const [email, setEmail] = useState('')
+  const [identifier, setIdentifier] = useState('')
   const [password, setPassword] = useState('')
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     clearError()
     try {
-      await login(email, password)
+      await login(identifier, password)
     } catch {
       // Error is set inside login(); nothing extra needed here
     }
@@ -53,19 +53,19 @@ export function LoginPage() {
           <form onSubmit={(e) => { void handleSubmit(e) }} className="space-y-5">
             <div>
               <label
-                htmlFor="email"
+                htmlFor="identifier"
                 className="block text-sm font-medium text-gray-700 mb-1.5"
               >
-                Email address
+                Email or username
               </label>
               <input
-                id="email"
-                type="email"
-                autoComplete="email"
+                id="identifier"
+                type="text"
+                autoComplete="username"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@agency.com"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="superadmin or you@agency.com"
                 className="w-full px-4 py-2.5 rounded-lg border border-gray-300 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition text-sm"
               />
             </div>

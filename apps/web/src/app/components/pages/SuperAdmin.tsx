@@ -20,45 +20,50 @@ import { Checkbox } from '@/app/components/ui/checkbox'
 import { Plus, Settings, Loader2, Building2, ShieldAlert } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
-import { MODULES, MODULE_GROUPS, MODULE_KEYS, PLAN_DEFAULTS, type ModuleKey } from '@/lib/modules'
+import { MODULES, MODULE_GROUPS, MODULE_KEYS, PLAN_DEFAULTS, PLAN_LABELS, type ModuleKey, type PlanTier } from '@/lib/modules'
 import { useSubscription } from '@/app/context/SubscriptionContext'
 
-type Plan = 'FREE' | 'STARTER' | 'PRO' | 'ENTERPRISE' | 'CUSTOM'
-type SubStatus = 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELLED' | 'EXPIRED'
+type LicenseStatus = 'TRIAL' | 'ACTIVE' | 'SUSPENDED' | 'EXPIRED' | 'CANCELLED'
 
 interface CompanyRow {
   _id: string
   name: string
-  owner: string
-  ownerEmail: string
+  adminName: string
+  adminEmail: string
   status: string
+  tier: PlanTier
   createdAt: string
   userCount: number
-  subscription: {
+  license: {
     _id: string
-    plan: Plan
-    status: SubStatus
+    tier: PlanTier
+    status: LicenseStatus
     enabledModules: string[]
     maxUsers?: number | null
-    maxProjects?: number | null
-    trialEndsAt?: string | null
-    currentPeriodEnd?: string | null
+    maxAgencies?: number | null
+    sandboxLimit?: number | null
+    seats?: number | null
+    validTo?: string | null
     notes?: string
+  } | null
+  admin: {
+    _id: string
+    username: string
+    email: string
+    name: string
   } | null
 }
 
-const PLAN_COLOR: Record<Plan, string> = {
-  FREE: 'bg-gray-100 text-gray-700',
-  STARTER: 'bg-blue-100 text-blue-700',
-  PRO: 'bg-purple-100 text-purple-700',
+const TIER_COLOR: Record<PlanTier, string> = {
+  PRIME: 'bg-blue-100 text-blue-700',
+  ULTIMATE: 'bg-purple-100 text-purple-700',
   ENTERPRISE: 'bg-amber-100 text-amber-700',
-  CUSTOM: 'bg-slate-100 text-slate-700',
 }
 
-const STATUS_COLOR: Record<SubStatus, string> = {
+const STATUS_COLOR: Record<LicenseStatus, string> = {
   TRIAL: 'bg-blue-100 text-blue-700',
   ACTIVE: 'bg-green-100 text-green-700',
-  PAST_DUE: 'bg-amber-100 text-amber-700',
+  SUSPENDED: 'bg-amber-100 text-amber-700',
   CANCELLED: 'bg-gray-100 text-gray-700',
   EXPIRED: 'bg-red-100 text-red-700',
 }
@@ -74,16 +79,17 @@ export function SuperAdmin() {
   const [onName, setOnName] = useState('')
   const [onOwner, setOnOwner] = useState('')
   const [onEmail, setOnEmail] = useState('')
-  const [onPlan, setOnPlan] = useState<Plan>('STARTER')
+  const [onTier, setOnTier] = useState<PlanTier>('PRIME')
   const [onSaving, setOnSaving] = useState(false)
 
   // Subscription editor dialog state
   const [editTarget, setEditTarget] = useState<CompanyRow | null>(null)
-  const [editPlan, setEditPlan] = useState<Plan>('FREE')
-  const [editStatus, setEditStatus] = useState<SubStatus>('TRIAL')
+  const [editTier, setEditTier] = useState<PlanTier>('PRIME')
+  const [editStatus, setEditStatus] = useState<LicenseStatus>('TRIAL')
   const [editModules, setEditModules] = useState<Set<string>>(new Set())
   const [editMaxUsers, setEditMaxUsers] = useState('')
-  const [editMaxProjects, setEditMaxProjects] = useState('')
+  const [editMaxAgencies, setEditMaxAgencies] = useState('')
+  const [editSandboxLimit, setEditSandboxLimit] = useState('')
   const [editNotes, setEditNotes] = useState('')
   const [editSaving, setEditSaving] = useState(false)
 
@@ -101,14 +107,14 @@ export function SuperAdmin() {
   const filtered = useMemo(() => {
     const s = search.toLowerCase()
     return companies.filter((c) =>
-      !s || c.name.toLowerCase().includes(s) || c.ownerEmail?.toLowerCase().includes(s)
+      !s || c.name.toLowerCase().includes(s) || c.adminEmail?.toLowerCase().includes(s)
     )
   }, [companies, search])
 
   const totals = useMemo(() => ({
     companies: companies.length,
-    activeSubs: companies.filter((c) => c.subscription?.status === 'ACTIVE').length,
-    trialSubs: companies.filter((c) => c.subscription?.status === 'TRIAL').length,
+    activeSubs: companies.filter((c) => c.license?.status === 'ACTIVE').length,
+    trialSubs: companies.filter((c) => c.license?.status === 'TRIAL').length,
     users: companies.reduce((s, c) => s + c.userCount, 0),
   }), [companies])
 
@@ -121,12 +127,12 @@ export function SuperAdmin() {
     try {
       await api.post('/admin/companies', {
         name: onName.trim(),
-        owner: onOwner.trim(),
-        ownerEmail: onEmail.trim(),
-        plan: onPlan,
+        adminName: onOwner.trim(),
+        adminEmail: onEmail.trim(),
+        tier: onTier,
       })
       toast.success(`Company "${onName}" onboarded.`)
-      setOnName(''); setOnOwner(''); setOnEmail(''); setOnPlan('STARTER')
+      setOnName(''); setOnOwner(''); setOnEmail(''); setOnTier('PRIME')
       setOnboardOpen(false); load()
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to onboard')
@@ -135,19 +141,20 @@ export function SuperAdmin() {
 
   const openEdit = (c: CompanyRow) => {
     setEditTarget(c)
-    setEditPlan(c.subscription?.plan ?? 'FREE')
-    setEditStatus(c.subscription?.status ?? 'TRIAL')
-    setEditModules(new Set(c.subscription?.enabledModules ?? PLAN_DEFAULTS[c.subscription?.plan ?? 'FREE']))
-    setEditMaxUsers(c.subscription?.maxUsers != null ? String(c.subscription.maxUsers) : '')
-    setEditMaxProjects(c.subscription?.maxProjects != null ? String(c.subscription.maxProjects) : '')
-    setEditNotes(c.subscription?.notes ?? '')
+    setEditTier(c.license?.tier ?? c.tier ?? 'PRIME')
+    setEditStatus(c.license?.status ?? 'TRIAL')
+    setEditModules(new Set(c.license?.enabledModules ?? PLAN_DEFAULTS[c.license?.tier ?? c.tier ?? 'PRIME']))
+    setEditMaxUsers(c.license?.maxUsers != null ? String(c.license.maxUsers) : '')
+    setEditMaxAgencies(c.license?.maxAgencies != null ? String(c.license.maxAgencies) : '')
+    setEditSandboxLimit(c.license?.sandboxLimit != null ? String(c.license.sandboxLimit) : '')
+    setEditNotes(c.license?.notes ?? '')
   }
 
   // When the admin changes the plan dropdown, snap module set to that plan's
   // defaults so they don't have to tick 30 boxes manually.
-  const handlePlanChange = (p: Plan) => {
-    setEditPlan(p)
-    if (p !== 'CUSTOM') setEditModules(new Set(PLAN_DEFAULTS[p]))
+  const handleTierChange = (tier: PlanTier) => {
+    setEditTier(tier)
+    setEditModules(new Set(PLAN_DEFAULTS[tier]))
   }
 
   const toggleModule = (key: string) => {
@@ -163,19 +170,20 @@ export function SuperAdmin() {
     setEditSaving(true)
     try {
       const payload = {
-        plan: editPlan,
+        tier: editTier,
         status: editStatus,
         enabledModules: Array.from(editModules),
         maxUsers: editMaxUsers ? Number(editMaxUsers) : null,
-        maxProjects: editMaxProjects ? Number(editMaxProjects) : null,
+        maxAgencies: editMaxAgencies ? Number(editMaxAgencies) : null,
+        sandboxLimit: editSandboxLimit ? Number(editSandboxLimit) : undefined,
         notes: editNotes,
       }
-      if (editTarget.subscription) {
-        await api.patch(`/admin/subscriptions/${editTarget.subscription._id}`, payload)
+      if (editTarget.license) {
+        await api.patch(`/admin/subscriptions/${editTarget.license._id}`, payload)
       } else {
-        await api.post('/admin/subscriptions', { agencyId: editTarget._id, ...payload })
+        await api.post('/admin/subscriptions', { companyId: editTarget._id, ...payload })
       }
-      toast.success(`Subscription updated for ${editTarget.name}.`)
+      toast.success(`License updated for ${editTarget.name}.`)
       setEditTarget(null); load()
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Failed to save subscription')
@@ -209,7 +217,7 @@ export function SuperAdmin() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-semibold text-gray-900">Super Admin</h1>
-          <p className="text-gray-600 mt-1">Onboard companies and manage subscription / module access</p>
+          <p className="text-gray-600 mt-1">Onboard companies and manage license / module access</p>
         </div>
         <Button onClick={() => setOnboardOpen(true)} className="gap-2"><Plus className="w-4 h-4" /> Onboard Company</Button>
       </div>
@@ -256,21 +264,21 @@ export function SuperAdmin() {
                   <TableRow key={c._id}>
                     <TableCell className="font-medium">{c.name}</TableCell>
                     <TableCell>
-                      <div className="text-sm">{c.owner}</div>
-                      <div className="text-xs text-gray-500">{c.ownerEmail}</div>
+                      <div className="text-sm">{c.admin?.name ?? c.adminName}</div>
+                      <div className="text-xs text-gray-500">{c.admin?.email ?? c.adminEmail}</div>
                     </TableCell>
                     <TableCell>{c.userCount}</TableCell>
                     <TableCell>
-                      {c.subscription
-                        ? <Badge className={PLAN_COLOR[c.subscription.plan]}>{c.subscription.plan}</Badge>
-                        : <Badge variant="outline">No sub</Badge>}
+                      {c.license
+                        ? <Badge className={TIER_COLOR[c.license.tier]}>{PLAN_LABELS[c.license.tier]}</Badge>
+                        : <Badge variant="outline">No license</Badge>}
                     </TableCell>
                     <TableCell>
-                      {c.subscription
-                        ? <Badge className={STATUS_COLOR[c.subscription.status]}>{c.subscription.status}</Badge>
+                      {c.license
+                        ? <Badge className={STATUS_COLOR[c.license.status]}>{c.license.status}</Badge>
                         : '—'}
                     </TableCell>
-                    <TableCell>{c.subscription?.enabledModules?.length ?? 0}</TableCell>
+                    <TableCell>{c.license?.enabledModules?.length ?? 0}</TableCell>
                     <TableCell className="text-sm">{new Date(c.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <Button variant="outline" size="sm" className="gap-1" onClick={() => openEdit(c)}>
@@ -290,7 +298,7 @@ export function SuperAdmin() {
         <DialogContent className="max-w-xl">
           <DialogHeader>
             <DialogTitle>Onboard New Company</DialogTitle>
-            <DialogDescription>Creates the agency, an initial owner user, and a subscription seeded from the chosen plan.</DialogDescription>
+            <DialogDescription>Creates the company, an initial admin user, and a license seeded from the chosen tier.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2"><Label>Company Name *</Label><Input value={onName} onChange={(e) => setOnName(e.target.value)} placeholder="Acme Digital" /></div>
@@ -300,17 +308,16 @@ export function SuperAdmin() {
             </div>
             <div className="space-y-2">
               <Label>Initial Plan</Label>
-              <Select value={onPlan} onValueChange={(v: Plan) => setOnPlan(v)}>
+              <Select value={onTier} onValueChange={(v: PlanTier) => setOnTier(v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="FREE">Free</SelectItem>
-                  <SelectItem value="STARTER">Starter</SelectItem>
-                  <SelectItem value="PRO">Pro</SelectItem>
+                  <SelectItem value="PRIME">Prime</SelectItem>
+                  <SelectItem value="ULTIMATE">Ultimate</SelectItem>
                   <SelectItem value="ENTERPRISE">Enterprise</SelectItem>
                 </SelectContent>
               </Select>
               <p className="text-xs text-gray-500">
-                {PLAN_DEFAULTS[onPlan].length} modules will be enabled by default. You can fine-tune them after onboarding.
+                {PLAN_DEFAULTS[onTier].length} modules will be enabled by default. You can fine-tune them after onboarding.
               </p>
             </div>
           </div>
@@ -325,32 +332,30 @@ export function SuperAdmin() {
       <Dialog open={!!editTarget} onOpenChange={(o) => !o && setEditTarget(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Manage Subscription — {editTarget?.name}</DialogTitle>
-            <DialogDescription>Set the plan, status, limits, and per-module access.</DialogDescription>
+            <DialogTitle>Manage License — {editTarget?.name}</DialogTitle>
+            <DialogDescription>Set the tier, status, limits, and per-module access.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Plan</Label>
-                <Select value={editPlan} onValueChange={(v: Plan) => handlePlanChange(v)}>
+                <Label>Tier</Label>
+                <Select value={editTier} onValueChange={(v: PlanTier) => handleTierChange(v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="FREE">Free</SelectItem>
-                    <SelectItem value="STARTER">Starter</SelectItem>
-                    <SelectItem value="PRO">Pro</SelectItem>
+                    <SelectItem value="PRIME">Prime</SelectItem>
+                    <SelectItem value="ULTIMATE">Ultimate</SelectItem>
                     <SelectItem value="ENTERPRISE">Enterprise</SelectItem>
-                    <SelectItem value="CUSTOM">Custom</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Status</Label>
-                <Select value={editStatus} onValueChange={(v: SubStatus) => setEditStatus(v)}>
+                <Select value={editStatus} onValueChange={(v: LicenseStatus) => setEditStatus(v)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="TRIAL">Trial</SelectItem>
                     <SelectItem value="ACTIVE">Active</SelectItem>
-                    <SelectItem value="PAST_DUE">Past Due</SelectItem>
+                    <SelectItem value="SUSPENDED">Suspended</SelectItem>
                     <SelectItem value="CANCELLED">Cancelled</SelectItem>
                     <SelectItem value="EXPIRED">Expired</SelectItem>
                   </SelectContent>
@@ -360,7 +365,10 @@ export function SuperAdmin() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Max Users</Label><Input type="number" placeholder="unlimited" value={editMaxUsers} onChange={(e) => setEditMaxUsers(e.target.value)} /></div>
-              <div className="space-y-2"><Label>Max Projects</Label><Input type="number" placeholder="unlimited" value={editMaxProjects} onChange={(e) => setEditMaxProjects(e.target.value)} /></div>
+              <div className="space-y-2"><Label>Max Agencies</Label><Input type="number" placeholder="unlimited" value={editMaxAgencies} onChange={(e) => setEditMaxAgencies(e.target.value)} /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Sandbox Limit</Label><Input type="number" placeholder="tier default" value={editSandboxLimit} onChange={(e) => setEditSandboxLimit(e.target.value)} /></div>
             </div>
 
             <div className="space-y-2">
