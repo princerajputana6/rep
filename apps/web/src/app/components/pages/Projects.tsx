@@ -199,6 +199,11 @@ const MOCK_TEMPLATES: ProjectTemplate[] = [
   { id: 't4', name: 'Strategic Consulting', description: 'Advisory engagement template', type: 'fixed', archetype: 'Strategic', usageCount: 5, stages: ['Scoping', 'Research', 'Strategy', 'Roadmap', 'Handover'] },
 ];
 
+interface UserOption { _id: string; name: string; email: string }
+interface ClientOption { _id: string; name: string }
+interface PoolOption { _id: string; name: string }
+interface ProjectOption { id: string; name: string }
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function pulseColor(s: number) {
   if (s >= 75) return 'text-green-600';
@@ -581,14 +586,18 @@ function BoardTab({ projects, setProjects, onOpenProject }: { projects: Project[
 }
 
 // ─── Create Project Tab ───────────────────────────────────────────────────────
-function CreateProjectTab({ templates, onCreated, agencyId }: { templates: ProjectTemplate[]; onCreated: (p: Project) => void; agencyId: string | null }) {
+function CreateProjectTab({ templates, onCreated, agencyId, agencyName }: { templates: ProjectTemplate[]; onCreated: (p: Project) => void; agencyId: string | null; agencyName: string }) {
   const [step, setStep] = useState(1);
   const [selectedTemplate, setSelectedTemplate] = useState<ProjectTemplate | null>(null);
   const [tagInput, setTagInput] = useState('');
   const [docs, setDocs] = useState<string[]>([]);
+  const [owners, setOwners] = useState<UserOption[]>([]);
+  const [clients, setClients] = useState<ClientOption[]>([]);
+  const [pools, setPools] = useState<PoolOption[]>([]);
+  const [parentProjects, setParentProjects] = useState<ProjectOption[]>([]);
   const [form, setForm] = useState({
     name: '', description: '', type: 'fixed' as ProjectType,
-    client: '', agency: '', owner: '', resourcePool: '',
+    client: '', agency: '', owner: '', ownerId: '', resourcePool: '',
     budget: '', currency: 'USD', billingType: 'milestone', poNumber: '',
     startDate: '', endDate: '', approvalWorkflow: false, sharePublic: false,
     parentProjectId: '', customFormId: '', tags: [] as string[],
@@ -597,6 +606,37 @@ function CreateProjectTab({ templates, onCreated, agencyId }: { templates: Proje
 
   const set = (k: string, v: unknown) => setForm(prev => ({ ...prev, [k]: v }));
   const archetype = useMemo(() => computeArchetype(form.type, form.tags), [form.type, form.tags]);
+
+  useEffect(() => {
+    set('agency', agencyName);
+    set('client', '');
+    set('owner', '');
+    set('ownerId', '');
+    set('resourcePool', '');
+    set('parentProjectId', '');
+    if (!agencyId) {
+      setOwners([]);
+      setClients([]);
+      setPools([]);
+      setParentProjects([]);
+      return;
+    }
+
+    Promise.all([
+      api.get<{ data: UserOption[] }>(`/users?agencyId=${agencyId}&limit=100`).catch(() => ({ data: [] })),
+      api.get<ClientOption[]>(`/clients?agencyId=${agencyId}`).catch(() => []),
+      api.get<PoolOption[]>(`/resource-pools?agencyId=${agencyId}`).catch(() => []),
+      api.get<Record<string, unknown>[]>(`/projects?agencyId=${agencyId}`).catch(() => []),
+    ]).then(([usersRes, clientRows, poolRows, projectRows]) => {
+      setOwners(usersRes.data ?? []);
+      setClients(Array.isArray(clientRows) ? clientRows : []);
+      setPools(Array.isArray(poolRows) ? poolRows : []);
+      setParentProjects((Array.isArray(projectRows) ? projectRows : []).map((p) => ({
+        id: String(p._id ?? p.id ?? ''),
+        name: String(p.name ?? 'Untitled project'),
+      })).filter((p) => p.id));
+    });
+  }, [agencyId, agencyName]);
 
   const addTag = () => { if (tagInput.trim()) { set('tags', [...form.tags, tagInput.trim()]); setTagInput(''); } };
   const removeTag = (t: string) => set('tags', form.tags.filter(x => x !== t));
@@ -608,13 +648,15 @@ function CreateProjectTab({ templates, onCreated, agencyId }: { templates: Proje
   };
 
   const handleSubmit = () => {
-    if (!form.name || !form.client) { toast.error('Project name and client are required'); return; }
+    if (!form.name) { toast.error('Project name is required'); return; }
     if (!agencyId) { toast.error('Select an agency from the header first'); return; }
+    const selectedClient = clients.find((c) => c._id === form.client);
+    const selectedOwner = owners.find((o) => o._id === form.ownerId);
     const newProject: Project = {
       id: `p${Date.now()}`, name: form.name, description: form.description,
       type: form.type, archetype, status: 'planning',
       pulseScore: 85, deliveryConfidence: 80, scopeFrozen: false,
-      client: form.client, agency: form.agency, owner: form.owner,
+      client: selectedClient?.name ?? '', agency: agencyName, owner: selectedOwner?.name ?? '',
       resourcePool: form.resourcePool, budget: parseFloat(form.budget) || 0,
       currency: form.currency, billingType: form.billingType, poNumber: form.poNumber,
       startDate: form.startDate, endDate: form.endDate, tags: form.tags,
@@ -625,7 +667,8 @@ function CreateProjectTab({ templates, onCreated, agencyId }: { templates: Proje
       approvalWorkflow: form.approvalWorkflow,
       shareableLink: form.sharePublic ? `https://rep.io/share/${Date.now()}` : '',
       customFormId: form.customFormId,
-      parentProjectId: form.parentProjectId || undefined,
+      parentProjectId: form.parentProjectId && form.parentProjectId !== '__none__' ? form.parentProjectId : undefined,
+      customFormId: form.customFormId === '__none__' ? '' : form.customFormId,
       source: 'Manual',
     };
     api.post<Record<string, unknown>>('/projects', {
@@ -633,14 +676,16 @@ function CreateProjectTab({ templates, onCreated, agencyId }: { templates: Proje
       name: form.name,
       description: form.description,
       type: form.type,
+      clientId: form.client || undefined,
+      ownerId: form.ownerId || undefined,
       budget: parseFloat(form.budget) || 0,
       startDate: form.startDate || undefined,
       endDate: form.endDate || undefined,
       status: 'PLANNING',
     }).then((created) => {
-      onCreated(mapApiToProject(created));
+      onCreated({ ...mapApiToProject(created), client: selectedClient?.name ?? '', agency: agencyName, owner: selectedOwner?.name ?? '' });
       toast.success('Project created!');
-      setStep(1); setForm({ name: '', description: '', type: 'fixed', client: '', agency: '', owner: '', resourcePool: '', budget: '', currency: 'USD', billingType: 'milestone', poNumber: '', startDate: '', endDate: '', approvalWorkflow: false, sharePublic: false, parentProjectId: '', customFormId: '', tags: [], milestones: [] });
+      setStep(1); setForm({ name: '', description: '', type: 'fixed', client: '', agency: agencyName, owner: '', ownerId: '', resourcePool: '', budget: '', currency: 'USD', billingType: 'milestone', poNumber: '', startDate: '', endDate: '', approvalWorkflow: false, sharePublic: false, parentProjectId: '', customFormId: '', tags: [], milestones: [] });
     }).catch((e: Error) => {
       toast.error(e.message ?? 'Failed to create project');
     });
@@ -715,15 +760,14 @@ function CreateProjectTab({ templates, onCreated, agencyId }: { templates: Proje
                 </div>
                 <div className="space-y-1"><Label>Client *</Label>
                   <Select value={form.client} onValueChange={v => set('client', v)}>
-                    <SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger>
-                    <SelectContent>{CLIENTS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                    <SelectTrigger><SelectValue placeholder={clients.length ? 'Select client' : 'No clients for this agency'} /></SelectTrigger>
+                    <SelectContent>
+                      {clients.map(c => <SelectItem key={c._id} value={c._id}>{c.name}</SelectItem>)}
+                    </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1"><Label>Agency</Label>
-                  <Select value={form.agency} onValueChange={v => set('agency', v)}>
-                    <SelectTrigger><SelectValue placeholder="Select agency" /></SelectTrigger>
-                    <SelectContent>{AGENCIES.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <Input value={agencyName || 'Select an agency from the topbar'} readOnly className="bg-gray-50" />
                 </div>
               </div>
               <div className="space-y-2">
@@ -770,15 +814,19 @@ function CreateProjectTab({ templates, onCreated, agencyId }: { templates: Proje
               <h3 className="font-semibold text-gray-900">Team & Access</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1"><Label>Project Owner</Label>
-                  <Select value={form.owner} onValueChange={v => set('owner', v)}>
+                  <Select value={form.ownerId} onValueChange={v => {
+                    const owner = owners.find((o) => o._id === v);
+                    set('ownerId', v);
+                    set('owner', owner?.name ?? '');
+                  }}>
                     <SelectTrigger><SelectValue placeholder="Assign owner" /></SelectTrigger>
-                    <SelectContent>{OWNERS.map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}</SelectContent>
+                    <SelectContent>{owners.map(o => <SelectItem key={o._id} value={o._id}>{o.name} ({o.email})</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1"><Label>Resource Pool</Label>
                   <Select value={form.resourcePool} onValueChange={v => set('resourcePool', v)}>
-                    <SelectTrigger><SelectValue placeholder="Select pool" /></SelectTrigger>
-                    <SelectContent>{POOLS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                    <SelectTrigger><SelectValue placeholder={pools.length ? 'Select pool' : 'No pools for this agency'} /></SelectTrigger>
+                    <SelectContent>{pools.map(p => <SelectItem key={p._id} value={p.name}>{p.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
               </div>
@@ -837,15 +885,15 @@ function CreateProjectTab({ templates, onCreated, agencyId }: { templates: Proje
               <h3 className="font-semibold text-gray-900">Advanced Settings</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1"><Label>Link to Parent Project</Label>
-                  <Select value={form.parentProjectId} onValueChange={v => set('parentProjectId', v)}>
+                  <Select value={form.parentProjectId} onValueChange={v => set('parentProjectId', v === '__none__' ? '' : v)}>
                     <SelectTrigger><SelectValue placeholder="None (top-level)" /></SelectTrigger>
-                    <SelectContent><SelectItem value="">None</SelectItem>{MOCK_PROJECTS.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
+                    <SelectContent><SelectItem value="__none__">None</SelectItem>{parentProjects.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1"><Label>Attach Custom Form</Label>
-                  <Select value={form.customFormId} onValueChange={v => set('customFormId', v)}>
+                  <Select value={form.customFormId} onValueChange={v => set('customFormId', v === '__none__' ? '' : v)}>
                     <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
-                    <SelectContent><SelectItem value="">None</SelectItem>{CUSTOM_FORMS.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
+                    <SelectContent><SelectItem value="__none__">None</SelectItem>{CUSTOM_FORMS.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
               </div>
@@ -1358,7 +1406,10 @@ export function Projects() {
       return;
     }
     api.get<Record<string, unknown>[]>(`/projects?agencyId=${selectedAgencyId}`)
-      .then((rows) => setProjects((Array.isArray(rows) ? rows : []).map(mapApiToProject)))
+      .then((rows) => setProjects((Array.isArray(rows) ? rows : []).map((row) => ({
+        ...mapApiToProject(row),
+        agency: selectedAgencyObject?.name ?? '',
+      }))))
       .catch((e: Error) => toast.error(e.message ?? 'Failed to load projects'))
       .finally(() => setLoadingProjects(false));
   }, [selectedAgencyId]);
@@ -1462,7 +1513,7 @@ export function Projects() {
         </TabsContent>
 
         <TabsContent value="create" className="mt-4">
-          <CreateProjectTab templates={templates} onCreated={handleCreated} agencyId={selectedAgencyId} />
+          <CreateProjectTab templates={templates} onCreated={handleCreated} agencyId={selectedAgencyId} agencyName={selectedAgencyObject?.name ?? ''} />
         </TabsContent>
 
         <TabsContent value="templates" className="mt-4">

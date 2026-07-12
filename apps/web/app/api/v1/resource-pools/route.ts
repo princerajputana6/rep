@@ -3,11 +3,13 @@ import connectDB from '@/lib/mongodb'
 import { ResourcePool } from '@/lib/models/ResourcePool'
 import { ok, requireAuth, isNextResponse } from '@/lib/api-helpers'
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   const ctx = await requireAuth()
   if (isNextResponse(ctx)) return ctx
   await connectDB()
-  const data = await ResourcePool.find({ agencyId: ctx.agencyId }).sort({ createdAt: -1 }).lean()
+  const { searchParams } = new URL(req.url)
+  const agencyId = searchParams.get('agencyId') ?? ctx.agencyId
+  const data = await ResourcePool.find({ agencyId }).sort({ createdAt: -1 }).lean()
   return ok(data)
 }
 
